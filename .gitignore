@@ -1,4 +1,4 @@
-## Build
+## Build (.NET)
 bin/
 obj/
 
@@ -16,3 +16,8 @@ obj/
 *.log
 .DS_Store
 Thumbs.db
+
+## Общие бинарники
+*.dll
+*.exe
+*.pdb
