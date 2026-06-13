@@ -1,0 +1,76 @@
+@* Общий макет приложения: шапка, навигация, область контента *@
+@using KodShopWeb.Models
+@using KodShopWeb.Services
+@inject ShopSettings Settings
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — @Settings.ShopName</title>
+    <link rel="stylesheet" href="~/css/shop.css" />
+</head>
+<!-- CSS-переменные темы подставляются из настроек магазина (ShopSettings) -->
+<body style="--shop-font:@Settings.FontFamily; --shop-secondary:@Settings.SecondaryColor; --shop-accent:@Settings.AccentColor;">
+    <div class="shop-app">
+        <!-- Шапка: логотип, название магазина, информация о пользователе -->
+        <header class="shop-header">
+            <div class="shop-header__brand">
+                <img src="~/images/picture.png" alt="Логотип" class="shop-logo" />
+                <div>
+                    <h1>@Settings.ShopName</h1>
+                    <p class="shop-subtitle">Демонстрационный экзамен КОД · @Settings.Variant</p>
+                </div>
+            </div>
+            <div class="shop-header__user">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <span>@User.Identity.Name</span>
+                    <span class="role-badge">@GetRoleLabel(UserAccess.GetRole(User))</span>
+                }
+                else
+                {
+                    <span>Гость</span>
+                    <span class="role-badge">Гость</span>
+                }
+                <!-- Выход из системы (POST с antiforgery-токеном) -->
+                <form asp-controller="Account" asp-action="Logout" method="post" class="inline-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary">Выход</button>
+                </form>
+            </div>
+        </header>
+
+        <!-- Главное меню: пункты зависят от роли и настроек -->
+        <nav class="shop-nav">
+            <a href="@Url.Action("Index", "Products")">Товары</a>
+            @if (Settings.OrdersEnabled && UserAccess.CanViewOrders(User))
+            {
+                <a href="@Url.Action("Index", "Orders")">Заказы</a>
+            }
+            @if (User.IsInRole(nameof(UserRole.Administrator)))
+            {
+                <a href="@Url.Action("Index", "Import")">Импорт</a>
+            }
+        </nav>
+
+        <!-- Контент конкретной страницы -->
+        <main class="shop-main">
+            @RenderBody()
+        </main>
+    </div>
+    @* Дополнительные скрипты страницы (например, products.js) *@
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+@functions {
+    /** Преобразует enum роли в отображаемую подпись на русском */
+    private static string GetRoleLabel(UserRole role) => role switch
+    {
+        UserRole.Administrator => "Администратор",
+        UserRole.Manager => "Менеджер",
+        UserRole.Client => "Клиент",
+        _ => "Гость"
+    };
+}

@@ -1,0 +1,18 @@
+## Build
+bin/
+obj/
+
+## IDE
+.vs/
+*.user
+*.suo
+
+## База SQLite создаётся локально при запуске
+*.db
+*.db-shm
+*.db-wal
+
+## Логи и OS
+*.log
+.DS_Store
+Thumbs.db

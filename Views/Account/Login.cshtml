@@ -1,0 +1,58 @@
+@* Страница входа: отдельный layout без общей шапки и навигации *@
+@{
+    Layout = null;
+}
+@model KodShopWeb.ViewModels.LoginViewModel
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Вход</title>
+    <link rel="stylesheet" href="~/css/shop.css" />
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <img src="~/images/picture.png" alt="Логотип" class="login-logo" />
+            <h2>Вход</h2>
+
+            <!-- Сообщение об ошибке авторизации (неверный логин/пароль) -->
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="alert alert-error">@Model.ErrorMessage</div>
+            }
+
+            <!-- Форма входа по логину и паролю -->
+            <form asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+                <div class="form-group">
+                    <label asp-for="Login"></label>
+                    <input asp-for="Login" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Password"></label>
+                    <input asp-for="Password" type="password" class="form-control" />
+                </div>
+                <button type="submit" class="btn btn-accent">Войти</button>
+            </form>
+
+            <!-- Вход без учётной записи — роль «Гость» -->
+            <form asp-action="Guest" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-secondary">Просмотр как гость</button>
+            </form>
+
+            <!-- Подсказка с тестовыми учётными записями для демо-экзамена -->
+            <div class="login-hint">
+                <p>Тестовые учётные записи:</p>
+                <ul>
+                    <li>admin / admin</li>
+                    <li>manager / manager</li>
+                    <li>client / client</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

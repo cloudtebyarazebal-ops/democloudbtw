@@ -1,0 +1,63 @@
+@* Страница списка заказов (доступна менеджерам и администраторам) *@
+@model KodShopWeb.ViewModels.OrdersIndexViewModel
+@{
+    ViewData["Title"] = "Заказы";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<section class="page-header">
+    <h2>Заказы</h2>
+    @if (Model.CanEdit)
+    {
+        <a class="btn btn-accent" href="@Url.Action("Create")">Добавить заказ</a>
+    }
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert alert-info">@Model.Message</div>
+}
+
+<div class="product-table-wrapper">
+    <table class="product-table">
+        <thead>
+            <tr>
+                <th>Артикул</th>
+                <th>Статус</th>
+                <th>Адрес пункта выдачи</th>
+                <th>Дата заказа</th>
+                <th>Дата выдачи</th>
+                <th>Клиент</th>
+                @if (Model.CanEdit)
+                {
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var order in Model.Orders)
+            {
+                <tr>
+                    <td>@order.Article</td>
+                    <td>@order.Status</td>
+                    <td>@order.PickupAddress</td>
+                    <td>@order.OrderDate</td>
+                    <td>@order.DeliveryDate</td>
+                    <td>@order.ClientName</td>
+                    @if (Model.CanEdit)
+                    {
+                        <!-- Действия редактирования и удаления — только при CanEdit -->
+                        <td class="actions-cell">
+                            <a class="btn btn-small" href="@Url.Action("Edit", new { id = order.Id })">Изм.</a>
+                            <form asp-action="Delete" method="post" class="inline-form" onsubmit="return confirm('Удалить заказ?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@order.Id" />
+                                <button type="submit" class="btn btn-small btn-danger">Удал.</button>
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,31 @@
+@* Страница импорта данных из Excel (только для администратора) *@
+@model KodShopWeb.ViewModels.ImportViewModel
+@{
+    ViewData["Title"] = "Импорт";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<section class="page-header">
+    <h2>Импорт из Excel</h2>
+    <a class="btn btn-secondary" href="@Url.Action("Index", "Products")">Назад</a>
+</section>
+
+<div class="edit-form">
+    <p>Укажите путь к распакованной папке с файлами <code>Tovar.xlsx</code>, <code>user_import.xlsx</code> и изображениями.</p>
+
+    <!-- Форма отправляет путь к папке на сервер для обработки ImportService -->
+    <form asp-action="Index" method="post">
+        @Html.AntiForgeryToken()
+        <div class="form-group">
+            <label asp-for="FolderPath">Путь к папке</label>
+            <input asp-for="FolderPath" class="form-control" />
+        </div>
+        <button type="submit" class="btn btn-accent">Импортировать</button>
+    </form>
+
+    @* Результат импорта: успех (alert-info) или ошибка (alert-error) *@
+    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    {
+        <div class="alert @(Model.Success ? "alert-info" : "alert-error")" style="margin-top:1rem">@Model.Message</div>
+    }
+</div>

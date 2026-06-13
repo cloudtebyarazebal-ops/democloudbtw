@@ -1,0 +1,62 @@
+@* Форма создания или редактирования заказа *@
+@model KodShopWeb.ViewModels.OrderFormViewModel
+@using KodShopWeb.Models
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Добавление заказа" : "Редактирование заказа";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<section class="page-header">
+    <h2>@ViewData["Title"]</h2>
+    <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+</section>
+
+<form asp-action="Save" method="post" class="edit-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div asp-validation-summary="ModelOnly" class="alert alert-error"></div>
+
+    <div class="form-group">
+        <label asp-for="Article"></label>
+        <input asp-for="Article" class="form-control" />
+        <span asp-validation-for="Article" class="field-error"></span>
+    </div>
+    <!-- Статус заказа: «Новый» или «Завершен» -->
+    <div class="form-group">
+        <label asp-for="Status">Статус заказа</label>
+        <select asp-for="Status" class="form-control">
+            <option value="@OrderStatus.New">Новый</option>
+            <option value="@OrderStatus.Completed">Завершен</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label asp-for="PickupPointId">Адрес пункта выдачи</label>
+        <select asp-for="PickupPointId" class="form-control" asp-items="@(new SelectList(Model.PickupPoints, "Id", "Address"))"></select>
+    </div>
+    <div class="form-group">
+        <label asp-for="OrderDate"></label>
+        <input asp-for="OrderDate" type="date" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="DeliveryDate"></label>
+        <input asp-for="DeliveryDate" type="date" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="PickupCode"></label>
+        <input asp-for="PickupCode" class="form-control" />
+    </div>
+    <!-- Клиент необязателен (пустой option «—») -->
+    <div class="form-group">
+        <label asp-for="ClientId">Клиент</label>
+        <select asp-for="ClientId" class="form-control">
+            <option value="">—</option>
+            @foreach (var client in Model.Clients)
+            {
+                <option value="@client.Id">@client.FullName</option>
+            }
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-accent">Сохранить</button>
+</form>

@@ -1,0 +1,139 @@
+@* Страница списка товаров с фильтрацией, сортировкой и CRUD-действиями *@
+@model KodShopWeb.ViewModels.ProductsIndexViewModel
+@{
+    ViewData["Title"] = "Товары";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Заголовок страницы и кнопка добавления (только для ролей с правом редактирования) -->
+<section class="page-header">
+    <h2>Список товаров</h2>
+    @if (Model.CanEditProducts)
+    {
+        <a class="btn btn-accent" href="@Url.Action("Create")">Добавить товар</a>
+    }
+</section>
+
+<!-- Статусное сообщение после сохранения/удаления -->
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-info">@Model.StatusMessage</div>
+}
+
+@* Панель инструментов: поиск, фильтр скидок, сортировка (менеджер/админ) *@
+@if (Model.CanUseAdvancedTools)
+{
+    <section class="toolbar">
+        <input id="searchInput" class="form-control" placeholder="Поиск..." />
+        <select id="discountFilter" class="form-control">
+            @* Диапазоны скидок зависят от варианта экзамена (Profile vs Standard) *@
+            @if (Model.IsProfileVariant)
+            {
+                <option value="all">Все диапазоны</option>
+                <option value="0-12.99">0–12,99%</option>
+                <option value="13-16.99">13–16,99%</option>
+                <option value="17+">17% и более</option>
+            }
+            else
+            {
+                <option value="all">Все диапазоны</option>
+                <option value="0-11.99">0–11,99%</option>
+                <option value="12-18.99">12–18,99%</option>
+                <option value="19+">19% и более</option>
+            }
+        </select>
+        <select id="sortField" class="form-control">
+            @* Порядок полей сортировки также зависит от варианта *@
+            @if (Model.IsProfileVariant)
+            {
+                <option value="price">Цена</option>
+                <option value="quantity">Количество на складе</option>
+            }
+            else
+            {
+                <option value="quantity">Количество на складе</option>
+                <option value="price">Цена</option>
+                <option value="discount">Скидка</option>
+            }
+        </select>
+        <select id="sortDirection" class="form-control">
+            <option value="asc">По возрастанию</option>
+            <option value="desc">По убыванию</option>
+        </select>
+    </section>
+}
+
+<div class="product-table-wrapper">
+    <table class="product-table" id="productsTable">
+        <thead>
+            <tr>
+                <th>Фото</th>
+                <th>Наименование</th>
+                <th>Категория</th>
+                <th>Описание</th>
+                <th>Производитель</th>
+                <th>Поставщик</th>
+                <th>Цена</th>
+                <th>Ед.</th>
+                <th>На складе</th>
+                <th>Скидка</th>
+                @if (Model.CanEditProducts)
+                {
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Model.Products)
+            {
+                @* data-* атрибуты используются скриптом products.js для поиска и сортировки *@
+                <tr class="product-row @product.RowClass"
+                    style="background-color:@product.RowStyle"
+                    data-search="@($"{product.Article} {product.Name} {product.Category} {product.Description} {product.Manufacturer} {product.Supplier} {product.Unit}".ToLowerInvariant())"
+                    data-price="@product.Price"
+                    data-quantity="@product.QuantityOnStock"
+                    data-discount="@product.Discount">
+                    <td><img src="@product.ImageUrl" alt="@product.Name" class="product-thumb" /></td>
+                    <td>@product.Name</td>
+                    <td>@product.Category</td>
+                    <td class="description-cell">@product.Description</td>
+                    <td>@product.Manufacturer</td>
+                    <td>@product.Supplier</td>
+                    <td>
+                        @if (product.HasDiscount)
+                        {
+                            <span class="price-old">@product.Price.ToString("0.00") ₽</span>
+                            <span class="price-new">@product.FinalPrice.ToString("0.00") ₽</span>
+                        }
+                        else
+                        {
+                            <span>@product.Price.ToString("0.00") ₽</span>
+                        }
+                    </td>
+                    <td>@product.Unit</td>
+                    <td>@product.QuantityOnStock</td>
+                    <td>@product.Discount.ToString("0.##")%</td>
+                    @if (Model.CanEditProducts)
+                    {
+                        <td class="actions-cell">
+                            <a class="btn btn-small" href="@Url.Action("Edit", new { id = product.Id })">Изм.</a>
+                            <form asp-action="Delete" method="post" class="inline-form" onsubmit="return confirm('Удалить товар?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@product.Id" />
+                                <button type="submit" class="btn btn-small btn-danger">Удал.</button>
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    @* Клиентская фильтрация подключается только при наличии расширенных инструментов *@
+    @if (Model.CanUseAdvancedTools)
+    {
+        <script src="~/js/products.js"></script>
+    }
+}
