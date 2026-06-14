@@ -12,6 +12,9 @@ obj/
 *.db-shm
 *.db-wal
 
+## Тестовый проект apply-empty-tz
+NewExamProject/
+
 ## Логи и OS
 *.log
 .DS_Store

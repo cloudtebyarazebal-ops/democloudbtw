@@ -1,0 +1,15 @@
+<Application x:Class="ExamCoachDesktop.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+  <Application.Resources>
+    <SolidColorBrush x:Key="BgBrush" Color="#0F172A"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="#1E293B"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#6366F1"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="CodeBgBrush" Color="#0B1220"/>
+    <SolidColorBrush x:Key="TypedBrush" Color="#86EFAC"/>
+    <SolidColorBrush x:Key="PendingBrush" Color="#64748B"/>
+  </Application.Resources>
+</Application>

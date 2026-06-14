@@ -1,11 +1,19 @@
-@* Страница списка товаров с фильтрацией, сортировкой и CRUD-действиями *@
+@* Страница списка товаров с серверной фильтрацией, сортировкой и CRUD-действиями *@
 @model KodShopWeb.ViewModels.ProductsIndexViewModel
+@using KodShopWeb.Models
 @{
     ViewData["Title"] = "Товары";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    string SortFieldValue(ProductSortField field) => field switch
+    {
+        ProductSortField.Quantity => "quantity",
+        ProductSortField.Discount => "discount",
+        _ => "price"
+    };
+    var currentSortField = SortFieldValue(Model.SortField);
+    var currentSortDirection = Model.SortDirection == SortDirection.Desc ? "desc" : "asc";
 }
 
-<!-- Заголовок страницы и кнопка добавления (только для ролей с правом редактирования) -->
 <section class="page-header">
     <h2>Список товаров</h2>
     @if (Model.CanEditProducts)
@@ -14,53 +22,46 @@
     }
 </section>
 
-<!-- Статусное сообщение после сохранения/удаления -->
 @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
 {
     <div class="alert alert-info">@Model.StatusMessage</div>
 }
 
-@* Панель инструментов: поиск, фильтр скидок, сортировка (менеджер/админ) *@
 @if (Model.CanUseAdvancedTools)
 {
-    <section class="toolbar">
-        <input id="searchInput" class="form-control" placeholder="Поиск..." />
-        <select id="discountFilter" class="form-control">
-            @* Диапазоны скидок зависят от варианта экзамена (Profile vs Standard) *@
+    <form id="productsFilterForm" method="get" asp-action="Index" class="toolbar">
+        <input id="searchInput" name="search" class="form-control" placeholder="Поиск..." value="@Model.Search" />
+        <select id="discountFilter" name="discountFilter" class="form-control">
+            @foreach (var range in Model.DiscountFilterOptions)
+            {
+                if (range.Key == Model.DiscountFilterKey)
+                {
+                    <option value="@range.Key" selected="selected">@range.Label</option>
+                }
+                else
+                {
+                    <option value="@range.Key">@range.Label</option>
+                }
+            }
+        </select>
+        <select id="sortField" name="sortField" class="form-control">
             @if (Model.IsProfileVariant)
             {
-                <option value="all">Все диапазоны</option>
-                <option value="0-12.99">0–12,99%</option>
-                <option value="13-16.99">13–16,99%</option>
-                <option value="17+">17% и более</option>
+                <option value="price" selected="@(currentSortField == "price" ? "selected" : null)">Цена</option>
+                <option value="quantity" selected="@(currentSortField == "quantity" ? "selected" : null)">Количество на складе</option>
             }
             else
             {
-                <option value="all">Все диапазоны</option>
-                <option value="0-11.99">0–11,99%</option>
-                <option value="12-18.99">12–18,99%</option>
-                <option value="19+">19% и более</option>
+                <option value="quantity" selected="@(currentSortField == "quantity" ? "selected" : null)">Количество на складе</option>
+                <option value="price" selected="@(currentSortField == "price" ? "selected" : null)">Цена</option>
+                <option value="discount" selected="@(currentSortField == "discount" ? "selected" : null)">Скидка</option>
             }
         </select>
-        <select id="sortField" class="form-control">
-            @* Порядок полей сортировки также зависит от варианта *@
-            @if (Model.IsProfileVariant)
-            {
-                <option value="price">Цена</option>
-                <option value="quantity">Количество на складе</option>
-            }
-            else
-            {
-                <option value="quantity">Количество на складе</option>
-                <option value="price">Цена</option>
-                <option value="discount">Скидка</option>
-            }
+        <select id="sortDirection" name="sortDirection" class="form-control">
+            <option value="asc" selected="@(currentSortDirection == "asc" ? "selected" : null)">По возрастанию</option>
+            <option value="desc" selected="@(currentSortDirection == "desc" ? "selected" : null)">По убыванию</option>
         </select>
-        <select id="sortDirection" class="form-control">
-            <option value="asc">По возрастанию</option>
-            <option value="desc">По убыванию</option>
-        </select>
-    </section>
+    </form>
 }
 
 <div class="product-table-wrapper">
@@ -86,13 +87,7 @@
         <tbody>
             @foreach (var product in Model.Products)
             {
-                @* data-* атрибуты используются скриптом products.js для поиска и сортировки *@
-                <tr class="product-row @product.RowClass"
-                    style="background-color:@product.RowStyle"
-                    data-search="@($"{product.Article} {product.Name} {product.Category} {product.Description} {product.Manufacturer} {product.Supplier} {product.Unit}".ToLowerInvariant())"
-                    data-price="@product.Price"
-                    data-quantity="@product.QuantityOnStock"
-                    data-discount="@product.Discount">
+                <tr class="product-row @product.RowClass" style="background-color:@product.RowStyle">
                     <td><img src="@product.ImageUrl" alt="@product.Name" class="product-thumb" /></td>
                     <td>@product.Name</td>
                     <td>@product.Category</td>
@@ -120,6 +115,10 @@
                             <form asp-action="Delete" method="post" class="inline-form" onsubmit="return confirm('Удалить товар?');">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@product.Id" />
+                                <input type="hidden" name="search" value="@Model.Search" />
+                                <input type="hidden" name="discountFilter" value="@Model.DiscountFilterKey" />
+                                <input type="hidden" name="sortField" value="@currentSortField" />
+                                <input type="hidden" name="sortDirection" value="@currentSortDirection" />
                                 <button type="submit" class="btn btn-small btn-danger">Удал.</button>
                             </form>
                         </td>
@@ -131,7 +130,6 @@
 </div>
 
 @section Scripts {
-    @* Клиентская фильтрация подключается только при наличии расширенных инструментов *@
     @if (Model.CanUseAdvancedTools)
     {
         <script src="~/js/products.js"></script>

@@ -1,82 +1,139 @@
 /**
- * Клиентская логика страницы «Список товаров».
- * Фильтрация по поисковой строке и диапазону скидки, сортировка по цене/количеству/скидке.
- * Подключается только для ролей с расширенными инструментами (CanUseAdvancedTools).
+ * Мгновенная фильтрация/поиск каталога через fetch + клиентский lock формы редактирования.
  */
 (function () {
-    // Элементы панели инструментов и тело таблицы товаров
+    const form = document.getElementById('productsFilterForm');
+    const results = document.getElementById('productsResults')
+        || (document.querySelector('.product-table-wrapper') ? document.querySelector('.product-table-wrapper').parentElement : null);
+    const modalElements = ensureLockModal();
+    const lockModal = modalElements.modal;
+    const lockClose = modalElements.close;
+    const lockKey = 'kodshop.product.edit.lock';
+    const lockTtlMs = 30 * 60 * 1000;
+
+    let debounceTimer;
+    let abortController;
+
+    function hasFreshEditLock() {
+        const raw = localStorage.getItem(lockKey);
+        if (!raw) return false;
+        const ts = Number(raw);
+        if (!Number.isFinite(ts)) {
+            localStorage.removeItem(lockKey);
+            return false;
+        }
+        if (Date.now() - ts > lockTtlMs) {
+            localStorage.removeItem(lockKey);
+            return false;
+        }
+        return true;
+    }
+
+    function showLockModal() {
+        if (!lockModal) return;
+        lockModal.classList.remove('hidden');
+    }
+
+    function hideLockModal() {
+        if (!lockModal) return;
+        lockModal.classList.add('hidden');
+    }
+
+    function bindEditLinks() {
+        const links = document.querySelectorAll('[data-product-edit-link="true"], a[href*="/Products/Edit"], a[href*="/Products/Create"], a[href$="/Products/Create"]');
+        links.forEach(link => {
+            link.addEventListener('click', function (e) {
+                if (hasFreshEditLock()) {
+                    e.preventDefault();
+                    showLockModal();
+                    return;
+                }
+                localStorage.setItem(lockKey, String(Date.now()));
+            });
+        });
+    }
+
+    function ensureLockModal() {
+        let modal = document.getElementById('editLockModal');
+        let close = document.getElementById('editLockModalClose');
+        if (modal && close) return { modal, close };
+
+        modal = document.createElement('div');
+        modal.id = 'editLockModal';
+        modal.className = 'modal-overlay hidden';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.innerHTML = [
+            '<div class="modal-card">',
+            '  <h3>Форма редактирования уже открыта</h3>',
+            '  <p>Сначала закройте текущую форму редактирования товара, затем откройте новую.</p>',
+            '  <div class="modal-actions">',
+            '    <button type="button" id="editLockModalClose" class="btn btn-accent">Понятно</button>',
+            '  </div>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(modal);
+        close = document.getElementById('editLockModalClose');
+        return { modal, close };
+    }
+
+    if (lockClose) {
+        lockClose.addEventListener('click', hideLockModal);
+    }
+    if (lockModal) {
+        lockModal.addEventListener('click', function (e) {
+            if (e.target === lockModal) hideLockModal();
+        });
+    }
+
+    bindEditLinks();
+
+    if (!form || !results) return;
+
     const searchInput = document.getElementById('searchInput');
     const discountFilter = document.getElementById('discountFilter');
     const sortField = document.getElementById('sortField');
     const sortDirection = document.getElementById('sortDirection');
-    const tbody = document.querySelector('#productsTable tbody');
 
-    // Если таблица отсутствует на странице — скрипт не выполняется
-    if (!tbody) return;
+    async function fetchFilteredResults() {
+        const params = new URLSearchParams(new FormData(form));
+        const url = form.action + '?' + params.toString();
 
-    /** Возвращает все строки товаров из tbody */
-    function getRows() {
-        return Array.from(tbody.querySelectorAll('.product-row'));
-    }
+        if (abortController) abortController.abort();
+        abortController = new AbortController();
 
-    /**
-     * Проверяет, попадает ли скидка строки в выбранный диапазон.
-     * Диапазоны различаются для вариантов экзамена (Profile / Standard).
-     * @param {HTMLElement} row — строка таблицы с data-discount
-     * @param {string} filterValue — значение option из discountFilter
-     */
-    function matchDiscount(row, filterValue) {
-        const discount = parseFloat(row.dataset.discount || '0');
-        switch (filterValue) {
-            // Вариант Profile (09.02.07-2)
-            case '0-12.99': return discount >= 0 && discount <= 12.99;
-            case '13-16.99': return discount >= 13 && discount <= 16.99;
-            case '17+': return discount >= 17;
-            // Вариант Standard (09.02.07-1)
-            case '0-11.99': return discount >= 0 && discount <= 11.99;
-            case '12-18.99': return discount >= 12 && discount <= 18.99;
-            case '19+': return discount >= 19;
-            default: return true; // «Все диапазоны»
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'fetch' },
+                signal: abortController.signal
+            });
+            if (!response.ok) return;
+
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const next = doc.getElementById('productsResults')
+                || (doc.querySelector('.product-table-wrapper') ? doc.querySelector('.product-table-wrapper').parentElement : null);
+            if (!next) return;
+
+            results.innerHTML = next.innerHTML;
+            history.replaceState(null, '', url);
+            bindEditLinks();
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;
         }
     }
 
-    /** Применяет фильтры, сортирует видимые строки и обновляет порядок в DOM */
-    function applyFiltersAndSort() {
-        const term = (searchInput?.value || '').trim().toLowerCase();
-        const filterValue = discountFilter?.value || 'all';
-        const field = sortField?.value || 'price';
-        const direction = sortDirection?.value || 'asc';
-
-        // Фильтрация: текстовый поиск по data-search и диапазон скидки
-        let rows = getRows().filter(row => {
-            const searchText = row.dataset.search || '';
-            const matchesSearch = !term || searchText.includes(term);
-            const matchesDiscount = matchDiscount(row, filterValue);
-            return matchesSearch && matchesDiscount;
-        });
-
-        // Сортировка по числовому полю из data-* (price, quantity, discount)
-        rows.sort((a, b) => {
-            const aValue = parseFloat(a.dataset[field] || '0');
-            const bValue = parseFloat(b.dataset[field] || '0');
-            return direction === 'asc' ? aValue - bValue : bValue - aValue;
-        });
-
-        // Перестановка строк в DOM в отсортированном порядке
-        rows.forEach(row => tbody.appendChild(row));
-
-        // Скрытие строк, не прошедших фильтрацию
-        getRows().forEach(row => {
-            row.style.display = rows.includes(row) ? '' : 'none';
-        });
+    function debouncedFetch() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchFilteredResults, 300);
     }
 
-    // Подписка на изменения всех элементов панели инструментов
-    [searchInput, discountFilter, sortField, sortDirection].forEach(el => {
-        if (el) el.addEventListener('input', applyFiltersAndSort);
-        if (el && el.tagName === 'SELECT') el.addEventListener('change', applyFiltersAndSort);
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', debouncedFetch);
+    }
 
-    // Первичное применение фильтров при загрузке страницы
-    applyFiltersAndSort();
+    [discountFilter, sortField, sortDirection].forEach(el => {
+        if (el) el.addEventListener('change', fetchFilteredResults);
+    });
 })();

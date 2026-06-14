@@ -1,0 +1,60 @@
+{
+  "setup": [
+    {
+      "id": "setup-1",
+      "phase": "0. Start",
+      "module": "m1",
+      "title": "Create ASP.NET Core project in Visual Studio",
+      "vsHint": "Recommended: ASP.NET Core Web App (Model-View-Controller), .NET 8.\nAlso works: Empty template — ExamCoach will create Models, Controllers, Views folders.\nAny project name (not only KodShopWeb).",
+      "terminal": "dotnet new mvc -n KodShopWeb -f net8.0 -o KodShopWeb\n:: or empty: dotnet new web -n MyShop -f net8.0 -o MyShop"
+    },
+    {
+      "id": "setup-2",
+      "phase": "0. Start",
+      "module": "m1",
+      "title": "Install NuGet packages (version 8.x for .NET 8)",
+      "vsHint": "Right click project -> Manage NuGet Packages:\n- Microsoft.EntityFrameworkCore.Sqlite 8.0.11\n- Microsoft.EntityFrameworkCore.Design 8.0.11\n- ClosedXML 0.105.0\n\nOr Package Manager Console:",
+      "terminal": "Install-Package Microsoft.EntityFrameworkCore.Sqlite -Version 8.0.11\nInstall-Package Microsoft.EntityFrameworkCore.Design -Version 8.0.11\nInstall-Package ClosedXML -Version 0.105.0"
+    },
+    {
+      "id": "setup-3",
+      "phase": "0. Start",
+      "module": "m1",
+      "title": "Create folder structure",
+      "vsHint": "Add folders: Models, Data, Services, ViewModels, Docs.\nAdd wwwroot/images/products.\nCopy picture.png from KOD resources to wwwroot/images/."
+    },
+    {
+      "id": "setup-4",
+      "phase": "1. Models",
+      "module": "m1",
+      "title": "ER-diagram (PDF)",
+      "vsHint": "Open Docs/ER-Diagram.html in browser → Print → Save as PDF → Docs/ER-Diagram.pdf.\nAttach ER-Diagram.pdf to exam materials (module 1 requirement)."
+    }
+  ],
+  "modules": [
+    {
+      "id": "m1",
+      "title": "Модуль 1 — БД",
+      "minutes": 50,
+      "description": "Models + Data + DbSeeder + ER-диаграмма + импорт"
+    },
+    {
+      "id": "m2",
+      "title": "Модуль 2 — Вход и каталог",
+      "minutes": 40,
+      "description": "Program + Account + Products Index + Login"
+    },
+    {
+      "id": "m3",
+      "title": "Модуль 3 — Товары",
+      "minutes": 90,
+      "description": "ProductService фильтры + Edit view + products.js"
+    },
+    {
+      "id": "m4",
+      "title": "Модуль 4 — Заказы",
+      "minutes": 60,
+      "description": "Orders CRUD (PU и BU)"
+    }
+  ]
+}

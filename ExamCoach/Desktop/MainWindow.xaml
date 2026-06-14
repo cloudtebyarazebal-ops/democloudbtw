@@ -1,0 +1,113 @@
+<Window x:Class="ExamCoachDesktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ExamCoach Desktop — окно WPF (не браузер)"
+        Width="1180" Height="760"
+        MinWidth="900" MinHeight="560"
+        Background="{StaticResource BgBrush}"
+        Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterScreen">
+  <Grid Margin="10">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="300"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <Border Grid.Column="0" Background="{StaticResource PanelBrush}" CornerRadius="10" Padding="10" Margin="0,0,8,0">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+          <TextBlock Text="ExamCoach Desktop" FontSize="16" FontWeight="SemiBold"/>
+          <TextBlock Text="Окно приложения · не index.html" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+          <TextBlock x:Name="AssignmentSourceText" Foreground="#86EFAC" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,4"/>
+          <Button Content="Другое задание…" Margin="0,0,0,6" Padding="6,4" Click="ImportAssignment_Click"/>
+          <TextBlock x:Name="ProgressText" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,8"/>
+          <CheckBox x:Name="TopmostCheck" Content="Поверх всех окон (Visual Studio)" IsChecked="True" Margin="0,0,0,4"
+                    Checked="TopmostCheck_Changed" Unchecked="TopmostCheck_Changed"/>
+          <TextBlock Text="ЦЕЛЕВОЙ ПРОЕКТ (новый MVC)" FontSize="11" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+          <TextBlock x:Name="ProjectRootText" Foreground="{StaticResource MutedBrush}" FontSize="10"
+                     TextWrapping="Wrap" Margin="0,0,0,4"/>
+          <Button Content="Из VS — найти проект" Margin="0,0,0,4" Padding="6,4" Click="DetectProject_Click"/>
+          <Button Content="Папка проекта…" Margin="0,0,0,8" Padding="6,4" Click="BrowseProject_Click"/>
+          <TextBlock x:Name="VsConnectionText" Foreground="{StaticResource MutedBrush}" FontSize="11"
+                     TextWrapping="Wrap" Margin="0,0,0,4"/>
+          <Button Content="Подключить Visual Studio" Margin="0,0,0,4" Padding="6,4" Click="ConnectVs_Click"/>
+          <CheckBox x:Name="InsertToVsCheck" Content="Вставлять фрагменты в VS" IsChecked="False" Margin="0,0,0,4"
+                    Checked="VsInsertMode_Changed" Unchecked="VsInsertMode_Changed"/>
+          <CheckBox x:Name="TraceModeCheck" Content="Обводка в VS (серым — пишу сам)" IsChecked="True" Margin="0,0,0,4"
+                    Checked="VsInsertMode_Changed" Unchecked="VsInsertMode_Changed"/>
+          <CheckBox x:Name="AutoScaffoldCheck" Content="Создавать новые файлы в VS (если их ещё нет)" IsChecked="True" Margin="0,0,0,4"/>
+          <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Text="Глобальные клавиши (работают в VS и когда свёрнуто): F8 — фрагмент (последний → следующий шаг), F7/F9 — шаг, Ctrl+F8 — +10, Ctrl+→ — обводка в VS"/>
+          <Button Content="Создать всю структуру" Margin="0,0,0,4" Padding="6,4" Click="ScaffoldAll_Click"/>
+          <CheckBox x:Name="AutoOpenFileCheck" Content="Переключать вкладку в VS (следующий шаг / F8)" IsChecked="True" Margin="0,0,0,8"
+                    Checked="AutoOpenVs_Changed" Unchecked="AutoOpenVs_Changed"/>
+          <TextBlock Text="ТАЙМЕРЫ МОДУЛЕЙ" FontSize="11" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+          <ItemsControl x:Name="TimerItems"/>
+          <Button Content="Сбросить все таймеры" Margin="0,6,0,8" Padding="6,4" Click="ResetAllTimers_Click"/>
+          <Button Content="Сбросить прогресс шагов" Margin="0,0,0,8" Padding="6,4" Click="ResetProgress_Click"/>
+        </StackPanel>
+        <ListBox x:Name="StepList" Background="#334155" BorderThickness="0"
+                 SelectionChanged="StepList_SelectionChanged"/>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <Border Grid.Row="0" Background="#422006" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+        <TextBlock Text="Подходит новый MVC или Empty (.NET 8): ExamCoach создаст папки и файлы, .csproj подставится автоматически по имени вашего проекта." TextWrapping="Wrap" Foreground="#FDE68A"/>
+      </Border>
+
+      <Border Grid.Row="1" Background="{StaticResource PanelBrush}" CornerRadius="10" Padding="10" Margin="0,0,0,8">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+            <Border Background="#0F766E" CornerRadius="10" Padding="6,2" Margin="0,0,6,0">
+              <TextBlock x:Name="ModuleBadge" FontSize="11"/>
+            </Border>
+            <Border Background="#4338CA" CornerRadius="10" Padding="6,2">
+              <TextBlock x:Name="PhaseBadge" FontSize="11"/>
+            </Border>
+          </StackPanel>
+          <TextBlock x:Name="StepTitle" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,6"/>
+          <TextBlock x:Name="VsHintText" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+          <TextBox x:Name="TerminalBox" Background="{StaticResource CodeBgBrush}" Foreground="#A5F3FC"
+                   FontFamily="Consolas" FontSize="12" IsReadOnly="True" BorderThickness="0"
+                   TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+      </Border>
+
+      <WrapPanel Grid.Row="2" Margin="0,0,0,8">
+        <Button Content="← Назад" Margin="0,0,6,6" Padding="10,6" Click="Prev_Click"/>
+        <Button Content="Далее →" Margin="0,0,6,6" Padding="10,6" Click="Next_Click"/>
+        <Button Content="✓ Готово" Margin="0,0,6,6" Padding="10,6" Click="MarkDone_Click"/>
+        <ComboBox x:Name="ModeCombo" Width="130" Margin="0,0,6,6" SelectionChanged="ModeCombo_SelectionChanged">
+          <ComboBoxItem Content="Построчно" Tag="line" IsSelected="True"/>
+          <ComboBoxItem Content="По словам" Tag="word"/>
+          <ComboBoxItem Content="По буквам" Tag="char"/>
+          <ComboBoxItem Content="Весь файл" Tag="all"/>
+        </ComboBox>
+        <Button Content="Показать фрагмент (F8)" Margin="0,0,6,6" Padding="10,6" Click="Reveal_Click"/>
+        <Button Content="Обводка в VS" Margin="0,0,6,6" Padding="10,6" Click="RevealToVs_Click" ToolTip="Серым в VS — вы печатаете поверх (как обводка букв)"/>
+        <Button Content="+10 строк" Margin="0,0,6,6" Padding="10,6" Click="Reveal10_Click"/>
+        <Button Content="Открыть файл в VS" Margin="0,0,6,6" Padding="10,6" Click="OpenInVs_Click"/>
+        <Button Content="Синхрон. в VS" Margin="0,0,6,6" Padding="10,6" Click="SyncToVs_Click" ToolTip="Заменить содержимое активного файла VS на уже показанный код"/>
+        <Button Content="Копировать код" Margin="0,0,6,6" Padding="10,6" Click="Copy_Click"/>
+      </WrapPanel>
+
+      <Border Grid.Row="3" Background="{StaticResource CodeBgBrush}" CornerRadius="10" Padding="10" BorderBrush="#334155" BorderThickness="1">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <TextBlock x:Name="CodeView" FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"/>
+        </ScrollViewer>
+      </Border>
+
+      <TextBlock Grid.Row="4" x:Name="FragmentInfo" Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0"/>
+    </Grid>
+  </Grid>
+</Window>

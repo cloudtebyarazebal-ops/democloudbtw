@@ -14,13 +14,41 @@ public class ProductQuery
     public string Search { get; set; } = string.Empty;
 
     /// <summary>Выбранный диапазон скидки для фильтрации.</summary>
-    public DiscountFilterRange DiscountFilter { get; set; } = new("Все диапазоны", null, null);
+    public DiscountFilterRange DiscountFilter { get; set; } = new("all", "Все диапазоны", null, null);
 
     /// <summary>Поле сортировки.</summary>
     public ProductSortField SortField { get; set; } = ProductSortField.Price;
 
     /// <summary>Направление сортировки.</summary>
     public SortDirection SortDirection { get; set; } = SortDirection.Asc;
+
+    /// <summary>
+    /// Собирает параметры запроса из query string HTTP-запроса.
+    /// </summary>
+    public static ProductQuery FromRequest(
+        string? search,
+        string? discountFilter,
+        string? sortField,
+        string? sortDirection,
+        ShopSettings settings)
+    {
+        var query = new ProductQuery
+        {
+            Search = search?.Trim() ?? string.Empty,
+            DiscountFilter = ShopVariantPresets.ResolveDiscountFilter(settings, discountFilter),
+            SortField = sortField?.ToLowerInvariant() switch
+            {
+                "quantity" => ProductSortField.Quantity,
+                "discount" => ProductSortField.Discount,
+                _ => ProductSortField.Price
+            },
+            SortDirection = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+                ? SortDirection.Desc
+                : SortDirection.Asc
+        };
+
+        return query;
+    }
 }
 
 /// <summary>
@@ -45,12 +73,12 @@ public class ProductService(AppDbContext db)
             .AsQueryable();
 
         if (advancedToolsEnabled)
+        {
             products = ApplyFilters(products, query);
-
-        var list = await products.ToListAsync();
-
-        // Без расширенных инструментов — только алфавитный порядок по наименованию.
-        return advancedToolsEnabled ? ApplySort(list, query) : list.OrderBy(p => p.Name).ToList();
+            var list = await products.ToListAsync();
+            return ApplySortInMemory(list, query);
+        }
+        return await products.OrderBy(p => p.Name).ToListAsync();
     }
 
     /// <summary>
@@ -199,20 +227,25 @@ public class ProductService(AppDbContext db)
     }
 
     /// <summary>
-    /// Сортирует материализованный список товаров в памяти по выбранному полю.
+    /// Применяет сортировку после материализации данных.
+    /// SQLite не поддерживает decimal в ORDER BY через EF-провайдер.
     /// </summary>
-    private static List<Product> ApplySort(List<Product> products, ProductQuery query)
+    private static List<Product> ApplySortInMemory(List<Product> source, ProductQuery query)
     {
-        Func<Product, IComparable> keySelector = query.SortField switch
-        {
-            ProductSortField.Quantity => p => p.QuantityOnStock,
-            ProductSortField.Discount => p => p.Discount,
-            _ => p => p.Price
-        };
+        var asc = query.SortDirection == SortDirection.Asc;
 
-        return query.SortDirection == SortDirection.Asc
-            ? products.OrderBy(keySelector).ToList()
-            : products.OrderByDescending(keySelector).ToList();
+        return query.SortField switch
+        {
+            ProductSortField.Quantity => asc
+                ? source.OrderBy(p => p.QuantityOnStock).ToList()
+                : source.OrderByDescending(p => p.QuantityOnStock).ToList(),
+            ProductSortField.Discount => asc
+                ? source.OrderBy(p => p.Discount).ToList()
+                : source.OrderByDescending(p => p.Discount).ToList(),
+            _ => asc
+                ? source.OrderBy(p => p.Price).ToList()
+                : source.OrderByDescending(p => p.Price).ToList()
+        };
     }
 
     /// <summary>

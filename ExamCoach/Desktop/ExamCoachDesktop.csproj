@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>ExamCoachDesktop</RootNamespace>
+    <AssemblyName>ExamCoachDesktop</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="tools/**" />
+    <None Remove="tools/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PdfPig" Version="0.1.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\steps-data.json" Link="steps-data.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\coach-config.json" Link="coach-config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="assignment-transform-rules.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

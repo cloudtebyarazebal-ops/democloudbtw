@@ -28,6 +28,7 @@
                 <th>Дата заказа</th>
                 <th>Дата выдачи</th>
                 <th>Клиент</th>
+                <th>Сумма</th>
                 @if (Model.CanEdit)
                 {
                     <th></th>
@@ -44,6 +45,7 @@
                     <td>@order.OrderDate</td>
                     <td>@order.DeliveryDate</td>
                     <td>@order.ClientName</td>
+                    <td>@order.TotalAmount</td>
                     @if (Model.CanEdit)
                     {
                         <!-- Действия редактирования и удаления — только при CanEdit -->

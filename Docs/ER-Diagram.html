@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <title>ER-диаграмма — KodShopWeb</title>
+    <style>
+        body { font-family: "Times New Roman", serif; margin: 24px; color: #222; }
+        h1 { font-size: 20px; margin-bottom: 8px; }
+        p.note { font-size: 12px; color: #555; margin-bottom: 24px; }
+        .diagram { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .entity { border: 2px solid #333; border-radius: 6px; padding: 10px; page-break-inside: avoid; }
+        .entity h2 { font-size: 14px; margin: 0 0 8px; text-align: center; background: #eee; padding: 4px; }
+        .entity ul { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+        .entity li { padding: 2px 0; border-bottom: 1px dotted #ccc; }
+        .pk { font-weight: bold; }
+        .fk { color: #004080; }
+        .relations { margin-top: 28px; font-size: 13px; line-height: 1.6; }
+        @media print { .note { display: none; } }
+    </style>
+</head>
+<body>
+    <h1>ER-диаграмма базы данных KodShopWeb</h1>
+    <p class="note">Для сдачи: откройте этот файл в браузере → Печать → «Сохранить как PDF» → Docs/ER-Diagram.pdf</p>
+
+    <div class="diagram">
+        <div class="entity">
+            <h2>AppUser</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li>FullName</li>
+                <li>Login</li>
+                <li>Password</li>
+                <li>Role</li>
+                <li>Email</li>
+            </ul>
+        </div>
+        <div class="entity">
+            <h2>Category</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li>Name</li>
+            </ul>
+        </div>
+        <div class="entity">
+            <h2>Manufacturer</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li>Name</li>
+            </ul>
+        </div>
+        <div class="entity">
+            <h2>Supplier</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li>Name</li>
+            </ul>
+        </div>
+        <div class="entity">
+            <h2>Product</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li>Article</li>
+                <li>Name, Description</li>
+                <li>Price, Unit</li>
+                <li>QuantityOnStock</li>
+                <li>Discount, ImagePath</li>
+                <li class="fk">CategoryId (FK)</li>
+                <li class="fk">ManufacturerId (FK)</li>
+                <li class="fk">SupplierId (FK)</li>
+            </ul>
+        </div>
+        <div class="entity">
+            <h2>PickupPoint</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li>Address</li>
+            </ul>
+        </div>
+        <div class="entity">
+            <h2>Order</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li>Article</li>
+                <li>Status</li>
+                <li>OrderDate</li>
+                <li>DeliveryDate</li>
+                <li>PickupCode</li>
+                <li class="fk">PickupPointId (FK)</li>
+                <li class="fk">ClientId (FK → AppUser)</li>
+            </ul>
+        </div>
+        <div class="entity">
+            <h2>OrderItem</h2>
+            <ul>
+                <li class="pk">Id (PK)</li>
+                <li class="fk">OrderId (FK)</li>
+                <li class="fk">ProductId (FK)</li>
+                <li>Quantity</li>
+            </ul>
+        </div>
+    </div>
+
+    <section class="relations">
+        <h2>Связи</h2>
+        <ul>
+            <li>Category 1 — N Product</li>
+            <li>Manufacturer 1 — N Product</li>
+            <li>Supplier 1 — N Product</li>
+            <li>PickupPoint 1 — N Order</li>
+            <li>AppUser (Client) 1 — N Order (необязательная)</li>
+            <li>Order 1 — N OrderItem</li>
+            <li>Product 1 — N OrderItem</li>
+        </ul>
+    </section>
+</body>
+</html>

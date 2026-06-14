@@ -3,12 +3,13 @@ using KodShopWeb.Services;
 using KodShopWeb.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+
+using Order = KodShopWeb.Models.Order;
 namespace KodShopWeb.Controllers;
 
 /// <summary>
 /// Контроллер заказов. Доступен менеджерам и администраторам.
-/// В варианте BU (OrdersEnabled=false) список недоступен — редирект в каталог.
+/// В варианте BU (OrdersEnabled=true) список недоступен — редирект в каталог.
 /// </summary>
 /// <param name="orderService">Сервис работы с заказами.</param>
 /// <param name="settings">Настройки магазина.</param>
@@ -36,7 +37,8 @@ public class OrdersController(OrderService orderService, ShopSettings settings) 
                 PickupAddress = o.PickupPoint.Address,
                 OrderDate = o.OrderDate.ToString("dd.MM.yyyy"),
                 DeliveryDate = o.DeliveryDate?.ToString("dd.MM.yyyy") ?? "—",
-                ClientName = o.Client?.FullName ?? "—"
+                ClientName = o.Client?.FullName ?? "—",
+                TotalAmount = o.TotalAmount.ToString("0.00") + " ₽"
             }).ToList(),
             CanEdit = UserAccess.CanEditOrders(User),
             Message = message
@@ -68,7 +70,7 @@ public class OrdersController(OrderService orderService, ShopSettings settings) 
         if (order is null)
             return NotFound();
 
-        return View(await BuildFormAsync(order));
+        return View(await BuildFormAsync(order!));
     }
 
     /// <summary>Сохраняет заказ (создание или обновление шапки заказа).</summary>
@@ -121,8 +123,20 @@ public class OrdersController(OrderService orderService, ShopSettings settings) 
     /// <summary>
     /// Собирает модель формы заказа со списками пунктов выдачи и клиентов.
     /// </summary>
-    private async Task<OrderFormViewModel> BuildFormAsync(Order order) =>
-        new()
+    private async Task<OrderFormViewModel> BuildFormAsync(Order order)
+    {
+        var items = order.Items
+            .Where(i => i.Product is not null)
+            .Select(i => new OrderItemLineViewModel
+            {
+                ProductName = i.Product!.Name,
+                Quantity = i.Quantity,
+                UnitPrice = i.Product.FinalPrice,
+                LineTotal = i.Quantity * i.Product.FinalPrice
+            })
+            .ToList();
+
+        return new OrderFormViewModel
         {
             Id = order.Id,
             Article = order.Article,
@@ -133,8 +147,11 @@ public class OrdersController(OrderService orderService, ShopSettings settings) 
             PickupPointId = order.PickupPointId,
             ClientId = order.ClientId,
             PickupPoints = await orderService.GetPickupPointsAsync(),
-            Clients = await orderService.GetClientsAsync()
+            Clients = await orderService.GetClientsAsync(),
+            Items = items,
+            TotalAmount = order.TotalAmount
         };
+    }
 
     /// <summary>Перезагружает справочники для формы при ошибке валидации.</summary>
     private async Task FillLookupsAsync(OrderFormViewModel model)

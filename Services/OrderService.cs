@@ -1,7 +1,8 @@
 using KodShopWeb.Data;
 using KodShopWeb.Models;
 using Microsoft.EntityFrameworkCore;
-
+
+using Order = KodShopWeb.Models.Order;
 namespace KodShopWeb.Services;
 
 /// <summary>
@@ -32,6 +33,7 @@ public class OrderService(AppDbContext db)
             .Include(o => o.PickupPoint)
             .Include(o => o.Client)
             .Include(o => o.Items)
+                .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(o => o.Id == id);
 
     /// <summary>Возвращает список пунктов выдачи для выпадающих списков.</summary>

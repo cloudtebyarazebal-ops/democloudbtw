@@ -1,6 +1,7 @@
 using KodShopWeb.Models;
 using Microsoft.EntityFrameworkCore;
-
+
+using Order = KodShopWeb.Models.Order;
 namespace KodShopWeb.Data;
 
 /// <summary>
@@ -12,35 +13,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     // --- Наборы сущностей (таблицы) ---
 
-    /// <summary>Таблица пользователей.</summary>
-    public DbSet<AppUser> Users => Set<AppUser>();
+/// <summary>Таблица пользователей.</summary>
+public DbSet<AppUser> Users => Set<AppUser>();
 
-    /// <summary>Таблица категорий товаров.</summary>
-    public DbSet<Category> Categories => Set<Category>();
+/// <summary>Таблица категорий товаров.</summary>
+public DbSet<Category> Categories => Set<Category>();
 
-    /// <summary>Таблица производителей.</summary>
-    public DbSet<Manufacturer> Manufacturers => Set<Manufacturer>();
+/// <summary>Таблица производителей.</summary>
+public DbSet<Manufacturer> Manufacturers => Set<Manufacturer>();
 
-    /// <summary>Таблица поставщиков.</summary>
-    public DbSet<Supplier> Suppliers => Set<Supplier>();
+/// <summary>Таблица поставщиков.</summary>
+public DbSet<Supplier> Suppliers => Set<Supplier>();
 
-    /// <summary>Таблица товаров.</summary>
-    public DbSet<Product> Products => Set<Product>();
+/// <summary>Таблица товаров.</summary>
+public DbSet<Product> Products => Set<Product>();
 
-    /// <summary>Таблица пунктов выдачи.</summary>
-    public DbSet<PickupPoint> PickupPoints => Set<PickupPoint>();
+/// <summary>Таблица пунктов выдачи.</summary>
+public DbSet<PickupPoint> PickupPoints => Set<PickupPoint>();
 
-    /// <summary>Таблица заказов.</summary>
-    public DbSet<Order> Orders => Set<Order>();
+/// <summary>Таблица заказов.</summary>
+public DbSet<Order> Orders => Set<Order>();
 
-    /// <summary>Таблица позиций заказов.</summary>
-    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+/// <summary>Таблица позиций заказов.</summary>
+public DbSet<OrderItem> OrderItems => Set<OrderItem>();
 
-    /// <summary>
-    /// Настройка модели данных: уникальные индексы, точность полей, каскадное удаление.
-    /// </summary>
-    /// <param name="modelBuilder">Построитель модели EF Core.</param>
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Логин пользователя должен быть уникальным.
         modelBuilder.Entity<AppUser>(entity =>

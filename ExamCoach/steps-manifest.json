@@ -1,0 +1,254 @@
+{
+    "setup":  [
+                  {
+                      "id":  "setup-1",
+                      "phase":  "0. Start",
+                      "module":  "m1",
+                      "title":  "Create ASP.NET Core project in Visual Studio",
+                      "vsHint":  "Recommended: ASP.NET Core Web App (Model-View-Controller), .NET 8.\nAlso works: Empty template — ExamCoach will create Models, Controllers, Views folders.\nAny project name (not only KodShopWeb).",
+                      "terminal":  "dotnet new mvc -n KodShopWeb -f net8.0 -o KodShopWeb\n:: or empty: dotnet new web -n MyShop -f net8.0 -o MyShop"
+                  },
+                  {
+                      "id":  "setup-2",
+                      "phase":  "0. Start",
+                      "module":  "m1",
+                      "title":  "Install NuGet packages (version 8.x for .NET 8)",
+                      "vsHint":  "Right click project -\u003e Manage NuGet Packages:\n- Microsoft.EntityFrameworkCore.Sqlite 8.0.11\n- Microsoft.EntityFrameworkCore.Design 8.0.11\n- ClosedXML 0.105.0\n\nOr Package Manager Console:",
+                      "terminal":  "Install-Package Microsoft.EntityFrameworkCore.Sqlite -Version 8.0.11\nInstall-Package Microsoft.EntityFrameworkCore.Design -Version 8.0.11\nInstall-Package ClosedXML -Version 0.105.0"
+                  },
+                  {
+                      "id":  "setup-3",
+                      "phase":  "0. Start",
+                      "module":  "m1",
+                      "title":  "Create folder structure",
+                      "vsHint":  "Add folders: Models, Data, Services, ViewModels, Docs.\nAdd wwwroot/images/products.\nCopy picture.png from KOD resources to wwwroot/images/."
+                  },
+                  {
+                      "id":  "setup-4",
+                      "phase":  "1. Models",
+                      "module":  "m1",
+                      "title":  "ER-diagram (PDF)",
+                      "vsHint":  "Open Docs/ER-Diagram.html in browser → Print → Save as PDF → Docs/ER-Diagram.pdf.\nAttach ER-Diagram.pdf to exam materials (module 1 requirement)."
+                  }
+              ],
+    "modules":  [
+                    {
+                        "id":  "m1",
+                        "title":  "Модуль 1 — БД",
+                        "minutes":  50,
+                        "description":  "Models + Data + DbSeeder + ER-диаграмма + импорт"
+                    },
+                    {
+                        "id":  "m2",
+                        "title":  "Модуль 2 — Вход и каталог",
+                        "minutes":  40,
+                        "description":  "Program + Account + Products Index + Login"
+                    },
+                    {
+                        "id":  "m3",
+                        "title":  "Модуль 3 — Товары",
+                        "minutes":  90,
+                        "description":  "ProductService фильтры + Edit view + products.js"
+                    },
+                    {
+                        "id":  "m4",
+                        "title":  "Модуль 4 — Заказы",
+                        "minutes":  60,
+                        "description":  "Orders CRUD (PU и BU)"
+                    }
+                ],
+    "files":  [
+                  {
+                      "path":  "appsettings.json",
+                      "phase":  "0. Start",
+                      "module":  "m1",
+                      "vsHint":  "Add ConnectionStrings and Shop section."
+                  },
+                  {
+                      "path":  "KodShopWeb.csproj",
+                      "phase":  "0. Start",
+                      "module":  "m1",
+                      "vsHint":  "Check PackageReference items in csproj."
+                  },
+                  {
+                      "path":  "Docs/ER-Diagram.html",
+                      "phase":  "1. Models",
+                      "module":  "m1",
+                      "vsHint":  "ER-diagram source; export to Docs/ER-Diagram.pdf for exam."
+                  },
+                  {
+                      "path":  "Docs/ER-Diagram.pdf",
+                      "phase":  "1. Models",
+                      "module":  "m1",
+                      "vsHint":  "ER-diagram PDF for module 1 submission."
+                  },
+                  {
+                      "path":  "Data/AppDbContext.cs",
+                      "phase":  "2. Database",
+                      "module":  "m1",
+                      "vsHint":  "EF Core DbContext."
+                  },
+                  {
+                      "path":  "Data/DbSeeder.cs",
+                      "phase":  "2. Database",
+                      "module":  "m1",
+                      "vsHint":  "Seed test users and products."
+                  },
+                  {
+                      "path":  "Services/ImportService.cs",
+                      "phase":  "3. Services",
+                      "module":  "m1",
+                      "vsHint":  "Excel import (optional on exam)."
+                  },
+                  {
+                      "path":  "Services/AuthService.cs",
+                      "phase":  "3. Services",
+                      "module":  "m2",
+                      "vsHint":  "Login validation."
+                  },
+                  {
+                      "path":  "Services/UserAccess.cs",
+                      "phase":  "3. Services",
+                      "module":  "m2",
+                      "vsHint":  "Role checks for views."
+                  },
+                  {
+                      "path":  "Services/ProductService.cs",
+                      "phase":  "3. Services",
+                      "module":  "m3",
+                      "vsHint":  "Products CRUD, filters, images."
+                  },
+                  {
+                      "path":  "Services/OrderService.cs",
+                      "phase":  "3. Services",
+                      "module":  "m4",
+                      "vsHint":  "Orders CRUD (PU module)."
+                  },
+                  {
+                      "path":  "ViewModels/ViewModels.cs",
+                      "phase":  "4. ViewModels",
+                      "module":  "m2",
+                      "vsHint":  "Forms for login, product, order."
+                  },
+                  {
+                      "path":  "Program.cs",
+                      "phase":  "5. Program",
+                      "module":  "m2",
+                      "vsHint":  "Replace Program.cs - DI, auth, routes."
+                  },
+                  {
+                      "path":  "Controllers/AccountController.cs",
+                      "phase":  "6. Controllers",
+                      "module":  "m2",
+                      "vsHint":  "Login, Guest, Logout actions."
+                  },
+                  {
+                      "path":  "Controllers/ProductsController.cs",
+                      "phase":  "6. Controllers",
+                      "module":  "m3",
+                      "vsHint":  "Product list and CRUD."
+                  },
+                  {
+                      "path":  "Controllers/OrdersController.cs",
+                      "phase":  "6. Controllers",
+                      "module":  "m4",
+                      "vsHint":  "Orders and Import controllers."
+                  },
+                  {
+                      "path":  "Views/Import/Index.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m1",
+                      "vsHint":  "Import page."
+                  },
+                  {
+                      "path":  "Views/_ViewImports.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m2",
+                      "vsHint":  "Global usings for Razor."
+                  },
+                  {
+                      "path":  "Views/_ViewStart.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m2",
+                      "vsHint":  "Default layout."
+                  },
+                  {
+                      "path":  "Views/Account/Login.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m2",
+                      "vsHint":  "Login form."
+                  },
+                  {
+                      "path":  "Views/Products/Index.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m2",
+                      "vsHint":  "Product table + toolbar."
+                  },
+                  {
+                      "path":  "Views/Shared/_Layout.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m2",
+                      "vsHint":  "Header, nav, user role badge."
+                  },
+                  {
+                      "path":  "Views/Shared/_ValidationScriptsPartial.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m2",
+                      "vsHint":  "Create or update Views/Shared/_ValidationScriptsPartial.cshtml in Visual Studio."
+                  },
+                  {
+                      "path":  "Views/Products/Edit.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m3",
+                      "vsHint":  "Add/Edit product form."
+                  },
+                  {
+                      "path":  "Views/Home/Error.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m4",
+                      "vsHint":  "Error page."
+                  },
+                  {
+                      "path":  "Views/Orders/Edit.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m4",
+                      "vsHint":  "Order form (PU)."
+                  },
+                  {
+                      "path":  "Views/Orders/Index.cshtml",
+                      "phase":  "7. Views",
+                      "module":  "m4",
+                      "vsHint":  "Orders list (PU)."
+                  },
+                  {
+                      "path":  "wwwroot/css/shop.css",
+                      "phase":  "8. Static",
+                      "module":  "m3",
+                      "vsHint":  "Styles per style guide."
+                  },
+                  {
+                      "path":  "wwwroot/js/products.js",
+                      "phase":  "8. Static",
+                      "module":  "m3",
+                      "vsHint":  "Debounced GET submit to Products/Index — server-side search/filter/sort."
+                  },
+                  {
+                      "path":  "Models/Entities.cs",
+                      "phase":  "9. Other",
+                      "module":  "m1",
+                      "vsHint":  "Add Entities.cs with User, Product, Order classes."
+                  },
+                  {
+                      "path":  "Models/Enums.cs",
+                      "phase":  "9. Other",
+                      "module":  "m1",
+                      "vsHint":  "Add class Enums.cs in Models folder."
+                  },
+                  {
+                      "path":  "Models/ShopSettings.cs",
+                      "phase":  "9. Other",
+                      "module":  "m1",
+                      "vsHint":  "ShopSettings and PU/BU presets."
+                  }
+              ]
+}

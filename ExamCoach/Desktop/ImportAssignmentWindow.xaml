@@ -1,0 +1,68 @@
+<Window x:Class="ExamCoachDesktop.ImportAssignmentWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Импорт другого задания"
+        Width="720" Height="620"
+        MinWidth="640" MinHeight="520"
+        Background="{StaticResource BgBrush}"
+        Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="140"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="{StaticResource MutedBrush}"
+               Text="Загрузите PDF задания КОД. Анализируются модули, функции (заказы, импорт, CRUD…), предметная область. Код, шаги и DbSeeder подгоняются под задание."/>
+
+    <GroupBox Grid.Row="1" Header="Текст задания" Padding="8" Margin="0,0,0,8">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+          <Button x:Name="LoadTextFileButton" Content="Загрузить PDF / TXT…" Padding="8,4" Margin="0,0,6,0" Click="LoadTextFile_Click"/>
+          <Button Content="Анализировать текст" Padding="8,4" Click="Analyze_Click"/>
+        </StackPanel>
+        <TextBlock x:Name="LoadStatusText" DockPanel.Dock="Top" Margin="0,0,0,6"
+                   Foreground="{StaticResource TypedBrush}" TextWrapping="Wrap"/>
+        <TextBox x:Name="AssignmentTextBox" AcceptsReturn="True" TextWrapping="Wrap"
+                 MinHeight="140" VerticalScrollBarVisibility="Auto"
+                 Background="#0B1220" BorderBrush="#334155" Foreground="{StaticResource TextBrush}"
+                 FontSize="12" CaretBrush="{StaticResource TextBrush}"/>
+      </DockPanel>
+    </GroupBox>
+
+    <GroupBox Grid.Row="2" Header="Папка с эталонным кодом (необязательно)" Padding="8" Margin="0,0,0,8">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Обзор…" Padding="8,4" Margin="8,0,0,0" Click="BrowseReference_Click"/>
+        <TextBox x:Name="ReferencePathBox" IsReadOnly="True" Background="#0B1220" BorderBrush="#334155"/>
+      </DockPanel>
+    </GroupBox>
+
+    <GroupBox Grid.Row="3" Header="Замены в коде (From → To)" Padding="8" Margin="0,0,0,10">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+          <Button Content="+ Замена" Padding="8,4" Margin="0,0,6,0" Click="AddReplacement_Click"/>
+          <Button Content="− Удалить" Padding="8,4" Click="RemoveReplacement_Click"/>
+        </StackPanel>
+        <DataGrid x:Name="ReplacementsGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                  Background="#0B1220" RowBackground="#1E293B" AlternatingRowBackground="#0F172A"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Было (KodShop…)" Binding="{Binding From, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+            <DataGridTextColumn Header="Стало (новое задание)" Binding="{Binding To, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </GroupBox>
+
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="Сбросить KodShop" Padding="10,6" Margin="0,0,8,0" Click="Reset_Click"/>
+      <Button Content="Отмена" Padding="10,6" Margin="0,0,8,0" IsCancel="True"/>
+      <Button Content="Применить" Padding="10,6" IsDefault="True" Click="Apply_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>

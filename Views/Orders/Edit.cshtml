@@ -58,5 +58,39 @@
         </select>
     </div>
 
+    @if (Model.Items.Count > 0)
+    {
+        <section class="order-items-section">
+            <h3>Состав заказа</h3>
+            <table class="product-table">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th>Кол-во</th>
+                        <th>Цена</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.UnitPrice.ToString("0.00") ₽</td>
+                            <td>@item.LineTotal.ToString("0.00") ₽</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3"><strong>Итого</strong></td>
+                        <td><strong>@Model.TotalAmount.ToString("0.00") ₽</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
+    }
+
     <button type="submit" class="btn btn-accent">Сохранить</button>
 </form>

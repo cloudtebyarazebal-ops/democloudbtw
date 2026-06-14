@@ -164,6 +164,21 @@ public class ProductsIndexViewModel
 
     /// <summary>Сообщение об успехе/ошибке операции.</summary>
     public string? StatusMessage { get; set; }
+
+    /// <summary>Текущая строка поиска (серверная фильтрация).</summary>
+    public string Search { get; set; } = string.Empty;
+
+    /// <summary>Ключ выбранного диапазона скидки.</summary>
+    public string DiscountFilterKey { get; set; } = "all";
+
+    /// <summary>Текущее поле сортировки.</summary>
+    public ProductSortField SortField { get; set; } = ProductSortField.Price;
+
+    /// <summary>Текущее направление сортировки.</summary>
+    public SortDirection SortDirection { get; set; } = SortDirection.Asc;
+
+    /// <summary>Доступные диапазоны скидок для выпадающего списка.</summary>
+    public List<DiscountFilterRange> DiscountFilterOptions { get; set; } = [];
 }
 
 /// <summary>
@@ -206,6 +221,30 @@ public class OrderFormViewModel
 
     /// <summary>Список клиентов для привязки к заказу.</summary>
     public List<AppUser> Clients { get; set; } = [];
+
+    /// <summary>Позиции заказа (только для просмотра при редактировании).</summary>
+    public List<OrderItemLineViewModel> Items { get; set; } = [];
+
+    /// <summary>Итоговая сумма заказа с учётом скидок на товары.</summary>
+    public decimal TotalAmount { get; set; }
+}
+
+/// <summary>
+/// Строка позиции заказа в форме редактирования.
+/// </summary>
+public class OrderItemLineViewModel
+{
+    /// <summary>Наименование товара.</summary>
+    public string ProductName { get; set; } = string.Empty;
+
+    /// <summary>Количество.</summary>
+    public int Quantity { get; set; }
+
+    /// <summary>Цена за единицу с учётом скидки.</summary>
+    public decimal UnitPrice { get; set; }
+
+    /// <summary>Сумма по строке.</summary>
+    public decimal LineTotal { get; set; }
 }
 
 /// <summary>
@@ -233,6 +272,9 @@ public class OrderRowViewModel
 
     /// <summary>ФИО клиента или «—».</summary>
     public string ClientName { get; set; } = string.Empty;
+
+    /// <summary>Итоговая сумма заказа.</summary>
+    public string TotalAmount { get; set; } = string.Empty;
 }
 
 /// <summary>

@@ -131,3 +131,33 @@ a.btn { display: inline-block; text-decoration: none; text-align: center; }
     .toolbar { grid-template-columns: 1fr; }
     .shop-header { flex-direction: column; align-items: flex-start; }
 }
+
+/* --- Простое модальное окно для клиентских блокировок --- */
+.hidden { display: none !important; }
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: grid;
+    place-items: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.modal-card {
+    width: min(520px, 92vw);
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+    padding: 1rem 1.25rem;
+}
+
+.modal-card h3 {
+    margin: 0 0 0.5rem;
+}
+
+.modal-actions {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}

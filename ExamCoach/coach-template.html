@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KodShop — тренажёр экзамена КОД</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#1e293b; --accent:#6366f1; --text:#e2e8f0; --muted:#94a3b8; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Segoe UI, sans-serif; background:var(--bg); color:var(--text); height:100vh; display:grid; grid-template-columns:320px 1fr; }
+    aside { background:var(--panel); padding:1rem; overflow:auto; border-right:1px solid #334155; display:flex; flex-direction:column; gap:.65rem; }
+    main { display:grid; grid-template-rows:auto auto auto 1fr auto; gap:.75rem; padding:1rem; overflow:hidden; min-height:0; }
+    h1 { font-size:1.05rem; margin:0; }
+    h3 { font-size:.85rem; margin:0 0 .35rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .step-list { flex:1; overflow:auto; }
+    .step-list button { display:block; width:100%; text-align:left; margin:.2rem 0; padding:.4rem .55rem; background:#334155; border:none; color:var(--text); border-radius:6px; cursor:pointer; font-size:.8rem; }
+    .step-list button.active { background:var(--accent); }
+    .step-list button.done { opacity:.5; text-decoration:line-through; }
+    .meta { background:var(--panel); padding:.75rem 1rem; border-radius:10px; }
+    .meta h2 { margin:0 0 .35rem; font-size:1rem; word-break:break-all; }
+    .hint { color:var(--muted); white-space:pre-wrap; font-size:.9rem; line-height:1.4; }
+    .terminal { background:#0b1220; padding:.75rem; border-radius:8px; font-family:Consolas, monospace; font-size:.82rem; color:#a5f3fc; white-space:pre-wrap; margin-top:.5rem; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; }
+    .toolbar button, .toolbar select { padding:.4rem .65rem; border-radius:6px; border:1px solid #475569; background:#334155; color:var(--text); cursor:pointer; font-size:.85rem; }
+    .toolbar button.primary { background:var(--accent); border-color:var(--accent); }
+    .code-box { background:#0b1220; border-radius:10px; padding:1rem; overflow:auto; font-family:Consolas, monospace; font-size:.85rem; line-height:1.45; border:1px solid #334155; min-height:160px; }
+    .typed { color:#86efac; white-space:pre-wrap; }
+    .pending { color:#64748b; white-space:pre-wrap; }
+    .progress { font-size:.85rem; color:var(--muted); }
+    .phase-badge { display:inline-block; background:#4338ca; padding:.15rem .5rem; border-radius:999px; font-size:.72rem; margin-bottom:.35rem; margin-right:.35rem; }
+    .module-badge { display:inline-block; background:#0f766e; padding:.15rem .5rem; border-radius:999px; font-size:.72rem; margin-bottom:.35rem; }
+    .banner { background:#422006; color:#fde68a; padding:.5rem .75rem; border-radius:8px; font-size:.85rem; }
+    .timers { background:#0b1220; border:1px solid #334155; border-radius:10px; padding:.65rem; }
+    .timer-card { background:#1e293b; border-radius:8px; padding:.55rem .65rem; margin-bottom:.45rem; border-left:3px solid var(--accent); }
+    .timer-card.active { border-left-color:var(--ok); background:#14532d33; }
+    .timer-card.warning { border-left-color:var(--warn); }
+    .timer-card.overdue { border-left-color:var(--danger); animation:pulse 1.2s infinite; }
+    .timer-head { display:flex; justify-content:space-between; align-items:center; gap:.5rem; font-size:.82rem; }
+    .timer-time { font-family:Consolas, monospace; font-size:1rem; font-weight:700; }
+    .timer-desc { font-size:.72rem; color:var(--muted); margin-top:.2rem; }
+    .timer-actions { display:flex; gap:.3rem; margin-top:.4rem; flex-wrap:wrap; }
+    .timer-actions button { padding:.2rem .45rem; font-size:.72rem; border-radius:5px; border:1px solid #475569; background:#334155; color:var(--text); cursor:pointer; }
+    .btn-block { width:100%; padding:.45rem; border-radius:6px; border:1px solid #475569; background:#334155; color:var(--text); cursor:pointer; font-size:.82rem; }
+    .btn-block.primary { background:var(--accent); border-color:var(--accent); }
+    @keyframes pulse { 50% { opacity:.75; } }
+    @media (max-width:900px) { body { grid-template-columns:1fr; } aside { max-height:42vh; } }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>Тренажёр KodShopWeb</h1>
+    <p class="progress" id="progressText">0 / 0</p>
+
+    <div class="timers">
+      <h3>Таймеры модулей</h3>
+      <div id="timerCards"></div>
+      <button class="btn-block" id="resetAllTimersBtn">Сбросить все таймеры</button>
+    </div>
+
+    <button class="btn-block primary" id="resetProgressBtn">Сбросить прогресс шагов</button>
+    <div class="step-list" id="stepList"></div>
+  </aside>
+  <main>
+    <div class="banner">Браузерная версия (index.html). Для Visual Studio и автоперехода по файлам запускайте <strong>Start-ExamCoachDesktop.bat</strong> или <strong>DesktopApp\ExamCoachDesktop.exe</strong>.</div>
+    <div class="meta">
+      <div>
+        <span class="module-badge" id="moduleBadge"></span>
+        <span class="phase-badge" id="phaseBadge"></span>
+      </div>
+      <h2 id="stepTitle"></h2>
+      <div class="hint" id="vsHint"></div>
+      <div class="terminal" id="terminalBox" hidden></div>
+    </div>
+    <div class="toolbar">
+      <button class="primary" id="prevBtn">← Назад</button>
+      <button class="primary" id="nextBtn">Далее →</button>
+      <button id="markDoneBtn">✓ Готово</button>
+      <select id="modeSelect" title="Как показывать код">
+        <option value="line">Построчно</option>
+        <option value="word">По словам</option>
+        <option value="char">По буквам</option>
+        <option value="all">Весь файл</option>
+      </select>
+      <button id="revealBtn">Показать фрагмент</button>
+      <button id="reveal10Btn">+10 строк</button>
+      <button id="copyBtn">Копировать код</button>
+    </div>
+    <div class="code-box"><span class="typed" id="typedPart"></span><span class="pending" id="pendingPart"></span></div>
+    <div class="progress" id="fragmentInfo">Пробел или → — следующий фрагмент. ← — предыдущий шаг.</div>
+  </main>
+  <script>
+    const STEPS = __STEPS_JSON__;
+    const MODULES = __MODULES_JSON__;
+    const PHASE_RU = {
+      '0. Start': '0. Старт проекта',
+      '1. Models': '1. Модели (Модуль 1 — БД)',
+      '2. Database': '2. База данных',
+      '3. Services': '3. Сервисы',
+      '4. ViewModels': '4. ViewModels',
+      '5. Program': '5. Program.cs',
+      '6. Controllers': '6. Контроллеры (Модуль 2–4)',
+      '7. Views': '7. Представления (HTML)',
+      '8. Static': '8. CSS и JavaScript'
+    };
+
+    let current = 0;
+    let mode = 'line';
+    let fragments = [];
+    let fragmentIndex = 0;
+    const done = new Set(JSON.parse(localStorage.getItem('kodCoachDone') || '[]'));
+    const timerState = JSON.parse(localStorage.getItem('kodCoachTimers') || '{}');
+
+    const els = {
+      stepList: document.getElementById('stepList'),
+      stepTitle: document.getElementById('stepTitle'),
+      phaseBadge: document.getElementById('phaseBadge'),
+      moduleBadge: document.getElementById('moduleBadge'),
+      vsHint: document.getElementById('vsHint'),
+      terminalBox: document.getElementById('terminalBox'),
+      typedPart: document.getElementById('typedPart'),
+      pendingPart: document.getElementById('pendingPart'),
+      fragmentInfo: document.getElementById('fragmentInfo'),
+      progressText: document.getElementById('progressText'),
+      timerCards: document.getElementById('timerCards'),
+    };
+
+    function formatTime(totalSec) {
+      const sign = totalSec < 0 ? '-' : '';
+      const abs = Math.abs(totalSec);
+      const h = Math.floor(abs / 3600);
+      const m = Math.floor((abs % 3600) / 60);
+      const s = abs % 60;
+      if (h > 0) return sign + h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      return sign + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    function getModuleById(id) {
+      return MODULES.find(m => m.id === id);
+    }
+
+    function getTimerRemaining(module) {
+      const st = timerState[module.id] || {};
+      const totalSec = module.minutes * 60;
+      if (!st.running) {
+        const left = st.remainingSec != null ? st.remainingSec : totalSec;
+        return { left, running: false };
+      }
+      const elapsed = Math.floor((Date.now() - st.startedAt) / 1000);
+      const left = (st.remainingSec != null ? st.remainingSec : totalSec) - elapsed;
+      return { left, running: true };
+    }
+
+    function saveTimers() {
+      localStorage.setItem('kodCoachTimers', JSON.stringify(timerState));
+    }
+
+    function startTimer(moduleId) {
+      const module = getModuleById(moduleId);
+      if (!module) return;
+      const prev = timerState[moduleId] || {};
+      const totalSec = module.minutes * 60;
+      const remaining = prev.remainingSec != null ? prev.remainingSec : totalSec;
+      if (remaining <= 0) return;
+      timerState[moduleId] = { running: true, startedAt: Date.now(), remainingSec: remaining };
+      saveTimers();
+      renderTimers();
+    }
+
+    function pauseTimer(moduleId) {
+      const st = timerState[moduleId];
+      if (!st || !st.running) return;
+      const { left } = getTimerRemaining(getModuleById(moduleId));
+      timerState[moduleId] = { running: false, remainingSec: left };
+      saveTimers();
+      renderTimers();
+    }
+
+    function resetTimer(moduleId) {
+      const module = getModuleById(moduleId);
+      timerState[moduleId] = { running: false, remainingSec: module.minutes * 60 };
+      saveTimers();
+      renderTimers();
+    }
+
+    function renderTimers() {
+      els.timerCards.innerHTML = '';
+      const currentModule = STEPS[current]?.module;
+      MODULES.forEach(module => {
+        const { left, running } = getTimerRemaining(module);
+        const total = module.minutes * 60;
+        const card = document.createElement('div');
+        card.className = 'timer-card';
+        if (module.id === currentModule) card.classList.add('active');
+        if (left <= 0) card.classList.add('overdue');
+        else if (left <= total * 0.15) card.classList.add('warning');
+
+        const doneInModule = module.stepIndices.filter(i => done.has(STEPS[i].id)).length;
+        const totalInModule = module.stepIndices.length;
+
+        card.innerHTML =
+          '<div class="timer-head">' +
+            '<strong>' + module.title + '</strong>' +
+            '<span class="timer-time">' + formatTime(left) + '</span>' +
+          '</div>' +
+          '<div class="timer-desc">' + module.description + ' · ' + doneInModule + '/' + totalInModule + ' шагов</div>' +
+          '<div class="timer-actions">' +
+            '<button data-act="start" data-id="' + module.id + '">' + (running ? 'Идёт…' : '▶ Старт') + '</button>' +
+            '<button data-act="pause" data-id="' + module.id + '">⏸ Пауза</button>' +
+            '<button data-act="reset" data-id="' + module.id + '">↺</button>' +
+          '</div>';
+        els.timerCards.appendChild(card);
+      });
+
+      els.timerCards.querySelectorAll('button[data-act]').forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.dataset.id;
+          if (btn.dataset.act === 'start') startTimer(id);
+          if (btn.dataset.act === 'pause') pauseTimer(id);
+          if (btn.dataset.act === 'reset') resetTimer(id);
+        };
+      });
+    }
+
+    function joinFragments(arr) {
+      if (mode === 'line') return arr.join('\n');
+      return arr.join('');
+    }
+
+    function buildFragments(code) {
+      if (!code) return [];
+      if (mode === 'all') return [code];
+      if (mode === 'line') return code.split('\n');
+      if (mode === 'word') return code.match(/\S+|\s+/g) || [];
+      return code.split('');
+    }
+
+    function renderStepList() {
+      els.stepList.innerHTML = '';
+      STEPS.forEach((s, i) => {
+        const b = document.createElement('button');
+        b.textContent = (i + 1) + '. ' + s.title;
+        if (i === current) b.classList.add('active');
+        if (done.has(s.id)) b.classList.add('done');
+        b.onclick = () => { current = i; resetFragments(); render(); };
+        els.stepList.appendChild(b);
+      });
+      els.progressText.textContent = done.size + ' готово / ' + STEPS.length + ' шагов';
+    }
+
+    function resetFragments() {
+      fragments = buildFragments(STEPS[current].code || '');
+      fragmentIndex = 0;
+      updateCodeView();
+    }
+
+    function updateCodeView() {
+      const step = STEPS[current];
+      const shown = joinFragments(fragments.slice(0, fragmentIndex));
+      const rest = joinFragments(fragments.slice(fragmentIndex));
+      els.typedPart.textContent = shown;
+      els.pendingPart.textContent = rest;
+      els.fragmentInfo.textContent = step.code
+        ? 'Фрагмент ' + fragmentIndex + ' / ' + fragments.length + ' (' + mode + '). F8 или → — следующий.'
+        : 'Код не нужен — выполните действия в Visual Studio.';
+    }
+
+    function render() {
+      const step = STEPS[current];
+      els.stepTitle.textContent = step.title;
+      els.phaseBadge.textContent = PHASE_RU[step.phase] || step.phase;
+      const mod = getModuleById(step.module);
+      els.moduleBadge.textContent = mod ? mod.title : (step.module || '');
+      els.vsHint.textContent = step.vsHint || '';
+      if (step.terminal) {
+        els.terminalBox.hidden = false;
+        els.terminalBox.textContent = step.terminal.trim();
+      } else {
+        els.terminalBox.hidden = true;
+      }
+      renderStepList();
+      renderTimers();
+      updateCodeView();
+    }
+
+    function reveal(count) {
+      fragmentIndex = Math.min(fragmentIndex + count, fragments.length);
+      updateCodeView();
+    }
+
+    document.getElementById('modeSelect').onchange = e => { mode = e.target.value; resetFragments(); };
+    document.getElementById('revealBtn').onclick = () => reveal(1);
+    document.getElementById('reveal10Btn').onclick = () => reveal(10);
+    document.getElementById('prevBtn').onclick = () => { if (current > 0) { current--; resetFragments(); render(); } };
+    document.getElementById('nextBtn').onclick = () => { if (current < STEPS.length - 1) { current++; resetFragments(); render(); } };
+    document.getElementById('markDoneBtn').onclick = () => {
+      done.add(STEPS[current].id);
+      localStorage.setItem('kodCoachDone', JSON.stringify([...done]));
+      renderStepList();
+      renderTimers();
+    };
+    document.getElementById('resetProgressBtn').onclick = () => {
+      if (confirm('Сбросить отметки готовых шагов?')) {
+        done.clear();
+        localStorage.removeItem('kodCoachDone');
+        renderStepList();
+        renderTimers();
+      }
+    };
+    document.getElementById('resetAllTimersBtn').onclick = () => {
+      if (confirm('Сбросить все таймеры модулей?')) {
+        MODULES.forEach(m => resetTimer(m.id));
+      }
+    };
+    document.getElementById('copyBtn').onclick = () => {
+      navigator.clipboard.writeText(STEPS[current].code || '');
+    };
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'F8' || e.key === 'ArrowRight') { e.preventDefault(); reveal(1); }
+      if (e.key === 'ArrowLeft') document.getElementById('prevBtn').click();
+      if (e.key === 'ArrowDown') document.getElementById('nextBtn').click();
+      if (e.key === 'ArrowUp') document.getElementById('prevBtn').click();
+    });
+
+    setInterval(renderTimers, 1000);
+    resetFragments();
+    render();
+  </script>
+</body>
+</html>

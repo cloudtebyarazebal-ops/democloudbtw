@@ -4,174 +4,156 @@ using Microsoft.EntityFrameworkCore;
 namespace KodShopWeb.Data;
 
 /// <summary>
-/// Начальное заполнение базы данных тестовыми данными.
-/// Выполняется один раз при первом запуске, если каталог товаров пуст.
+/// Заполняет базу данных демонстрационными данными (продажа компьютерных комплектующих: процессоры, видеокарты, материнские платы, оперативная память, блоки питания, накопители SSD/HDD + Manufacturer).
+/// Сгенерировано автоматически из текста ТЗ.
 /// </summary>
 public static class DbSeeder
 {
-    /// <summary>
-    /// Создаёт схему БД и заполняет справочники, пользователей, товары и пример заказа.
-    /// Пропускает заполнение, если в таблице Products уже есть записи.
-    /// </summary>
-    /// <param name="db">Контекст базы данных.</param>
-    /// <param name="env">Окружение хоста (пути к wwwroot и ImportData).</param>
-    public static async Task SeedAsync(AppDbContext db, IWebHostEnvironment env)
+    private const string SeedSignature = "8118CECA974D198E";
+
+    public static async Task SeedAsync(AppDbContext db, IWebHostEnvironment env, ShopSettings settings)
     {
-        await db.Database.EnsureCreatedAsync();
+        var forcePath = Path.Combine(env.ContentRootPath, "Data", ".force-db-reseed");
+        var signaturePath = Path.Combine(env.ContentRootPath, "Data", "seed-signature.txt");
+        var forceReseed = File.Exists(forcePath);
+        var storedSignature = File.Exists(signaturePath) ? await File.ReadAllTextAsync(signaturePath) : "";
+        var needsReseed = forceReseed || storedSignature.Trim() != SeedSignature;
 
-        // Повторное заполнение не выполняем — достаточно проверки наличия товаров.
-        if (await db.Products.AnyAsync())
-            return;
-
-        // --- Справочники ---
-        var categories = new[]
+        if (needsReseed)
         {
-            new Category { Name = "Роман" },
-            new Category { Name = "Хрестоматия" },
-            new Category { Name = "Учебник" }
-        };
-        db.Categories.AddRange(categories);
+            await db.Database.EnsureDeletedAsync();
+            await db.Database.EnsureCreatedAsync();
+        }
+        else
+        {
+            await db.Database.EnsureCreatedAsync();
+            if (await db.Products.AnyAsync())
+                return;
+        }
+
+        await EnsureUsersAsync(db);
 
         var manufacturers = new[]
         {
-            new Manufacturer { Name = "АСТ" },
-            new Manufacturer { Name = "Эксмо" },
-            new Manufacturer { Name = "Просвещение" }
+            new Manufacturer { Name = "Intel" },
+            new Manufacturer { Name = "AMD" },
+            new Manufacturer { Name = "NVIDIA" },
+            new Manufacturer { Name = "ASUS" },
+            new Manufacturer { Name = "MSI" },
         };
-        db.Manufacturers.AddRange(manufacturers);
+        await db.Manufacturers.AddRangeAsync(manufacturers);
 
         var suppliers = new[]
         {
-            new Supplier { Name = "ООО «Книжный склад»" },
-            new Supplier { Name = "ИП Петров" }
+            new Supplier { Name = "ООО «КомпСклад»" },
+            new Supplier { Name = "ИП ТехноПоставка" },
         };
-        db.Suppliers.AddRange(suppliers);
+        await db.Suppliers.AddRangeAsync(suppliers);
+
+        var categories = new[]
+        {
+            new Category { Name = "Процессоры" },
+            new Category { Name = "Видеокарты" },
+            new Category { Name = "Материнские платы" },
+            new Category { Name = "Память" },
+            new Category { Name = "Накопители" },
+            new Category { Name = "Блоки питания" },
+        };
+        await db.Categories.AddRangeAsync(categories);
 
         var pickupPoints = new[]
         {
-            new PickupPoint { Address = "344288, г. Лесной, ул. Чехова, 1" },
-            new PickupPoint { Address = "614164, г. Лесной, ул. Степная, 30" },
-            new PickupPoint { Address = "394242, г. Лесной, ул. Коммунистическая, 43" }
+            new PickupPoint { Address = "г. Москва, ул. Тверская, д. 1" },
+            new PickupPoint { Address = "г. Санкт-Петербург, Невский пр., д. 10" }
         };
-        db.PickupPoints.AddRange(pickupPoints);
-
-        // --- Тестовые пользователи всех ролей ---
-        var users = new[]
-        {
-            new AppUser { FullName = "Админов Админ Админович", Login = "admin", Password = "admin", Role = UserRole.Administrator, Email = "admin@shop.local" },
-            new AppUser { FullName = "Менеджеров Менеджер Менеджерович", Login = "manager", Password = "manager", Role = UserRole.Manager, Email = "manager@shop.local" },
-            new AppUser { FullName = "Клиентов Клиент Клиентович", Login = "client", Password = "client", Role = UserRole.Client, Email = "client@shop.local" }
-        };
-        db.Users.AddRange(users);
+        await db.PickupPoints.AddRangeAsync(pickupPoints);
 
         await db.SaveChangesAsync();
 
-        // --- Демонстрационный каталог товаров ---
-        var products = new List<Product>
+        var products = new[]
         {
-            new()
+            new Product
             {
-                Article = "A112T4",
-                Name = "Прокляты и убиты",
-                Description = "Роман-эпопея Виктора Астафьева.",
-                Price = 890m,
-                Unit = "шт.",
-                QuantityOnStock = 12,
-                Discount = 28m,
+                Article = "CPU-I7-14700",
+                Name = "Intel Core i7-14700",
                 CategoryId = categories[0].Id,
+                Description = "Процессор Intel 20 ядер.",
                 ManufacturerId = manufacturers[0].Id,
                 SupplierId = suppliers[0].Id,
-                ImagePath = "/images/products/1.jpg"
-            },
-            new()
-            {
-                Article = "G843H5",
-                Name = "Хрестоматия по литературе",
-                Description = "Сборник для старших классов.",
-                Price = 450m,
+                Price = 38990m,
                 Unit = "шт.",
-                QuantityOnStock = 0,
-                Discount = 0m,
+                QuantityOnStock = 15,
+                Discount = 5m,
+                ImagePath = "images/products/item-1.png"
+            },
+            new Product
+            {
+                Article = "GPU-RTX4070",
+                Name = "NVIDIA GeForce RTX 4070",
                 CategoryId = categories[1].Id,
-                ManufacturerId = manufacturers[2].Id,
+                Description = "Видеокарта 12 ГБ.",
+                ManufacturerId = manufacturers[1].Id,
                 SupplierId = suppliers[0].Id,
-                ImagePath = null
-            },
-            new()
-            {
-                Article = "D325D4",
-                Name = "Основы программирования",
-                Description = "Учебник для СПО.",
-                Price = 1200m,
-                Unit = "шт.",
-                QuantityOnStock = 5,
-                Discount = 15m,
-                CategoryId = categories[2].Id,
-                ManufacturerId = manufacturers[2].Id,
-                SupplierId = suppliers[1].Id,
-                ImagePath = "/images/products/3.jpg"
-            },
-            new()
-            {
-                Article = "S432T5",
-                Name = "Тихий Дон",
-                Description = "Классика русской литературы.",
-                Price = 760m,
+                Price = 64990m,
                 Unit = "шт.",
                 QuantityOnStock = 8,
                 Discount = 10m,
-                CategoryId = categories[0].Id,
-                ManufacturerId = manufacturers[1].Id,
+                ImagePath = "images/products/item-2.png"
+            },
+            new Product
+            {
+                Article = "RAM-DDR5-32",
+                Name = "DDR5 32GB Kit",
+                CategoryId = categories[2].Id,
+                Description = "Оперативная память 32 ГБ.",
+                ManufacturerId = manufacturers[2].Id,
                 SupplierId = suppliers[0].Id,
-                ImagePath = "/images/products/4.jpg"
-            }
+                Price = 12990m,
+                Unit = "шт.",
+                QuantityOnStock = 25,
+                Discount = 0m,
+                ImagePath = "images/products/item-3.png"
+            },
         };
-        db.Products.AddRange(products);
+        await db.Products.AddRangeAsync(products);
         await db.SaveChangesAsync();
 
-        // --- Пример заказа клиента с двумя позициями ---
-        var client = await db.Users.FirstAsync(u => u.Role == UserRole.Client);
-        var order = new Order
+        if (!await db.Orders.AnyAsync())
         {
-            Article = "ORD-001",
-            Status = OrderStatus.New,
-            OrderDate = DateTime.Today.AddDays(-2),
-            DeliveryDate = null,
-            PickupCode = "482913",
-            PickupPointId = pickupPoints[0].Id,
-            ClientId = client.Id,
-            Items =
-            [
-                new OrderItem { ProductId = products[0].Id, Quantity = 2 },
-                new OrderItem { ProductId = products[2].Id, Quantity = 1 }
-            ]
-        };
-        db.Orders.Add(order);
-        await db.SaveChangesAsync();
+            var client = await db.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Client);
+            var order = new Order
+            {
+                Article = "ORD-1001",
+                Status = OrderStatus.New,
+                OrderDate = DateTime.UtcNow.Date,
+                DeliveryDate = null,
+                PickupCode = "482913",
+                PickupPointId = pickupPoints[0].Id,
+                ClientId = client?.Id
+            };
+            await db.Orders.AddAsync(order);
+            await db.SaveChangesAsync();
+        }
 
-        CopySeedImages(env);
+        Directory.CreateDirectory(Path.GetDirectoryName(signaturePath)!);
+        await File.WriteAllTextAsync(signaturePath, SeedSignature);
+        if (File.Exists(forcePath))
+            File.Delete(forcePath);
     }
 
-    /// <summary>
-    /// Копирует изображения товаров из ImportData/images в wwwroot/images/products,
-    /// если целевой файл ещё не существует.
-    /// </summary>
-    /// <param name="env">Окружение хоста для определения путей.</param>
-    private static void CopySeedImages(IWebHostEnvironment env)
+    private static async Task EnsureUsersAsync(AppDbContext db)
     {
-        var targetDir = Path.Combine(env.WebRootPath, "images", "products");
-        Directory.CreateDirectory(targetDir);
-
-        var importDir = Path.Combine(env.ContentRootPath, "ImportData", "images");
-        if (!Directory.Exists(importDir))
+        if (await db.Users.AnyAsync())
             return;
 
-        foreach (var file in Directory.GetFiles(importDir))
+        var users = new[]
         {
-            var dest = Path.Combine(targetDir, Path.GetFileName(file));
-            // Не перезаписываем уже существующие файлы.
-            if (!File.Exists(dest))
-                File.Copy(file, dest);
-        }
+            new AppUser { FullName = "Администратор Системы", Login = "admin", Password = "admin123", Role = UserRole.Administrator, Email = "admin@kodshop.local" },
+            new AppUser { FullName = "Менеджер Склада", Login = "manager", Password = "manager123", Role = UserRole.Manager, Email = "manager@kodshop.local" },
+            new AppUser { FullName = "Иванов Иван Иванович", Login = "client", Password = "client123", Role = UserRole.Client, Email = "client@kodshop.local" }
+        };
+
+        await db.Users.AddRangeAsync(users);
+        await db.SaveChangesAsync();
     }
 }

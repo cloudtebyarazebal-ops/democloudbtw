@@ -24,13 +24,22 @@ public class ProductsController(ProductService productService, ShopSettings sett
 {
     /// <summary>
     /// Главная страница каталога. Права определяют доступ к расширенным инструментам и CRUD.
+    /// Поиск, фильтрация и сортировка выполняются на сервере через query string.
     /// </summary>
-    /// <param name="message">Опциональное flash-сообщение после редиректа.</param>
     [HttpGet]
-    public async Task<IActionResult> Index(string? message)
+    public async Task<IActionResult> Index(
+        string? search,
+        string? discountFilter,
+        string? sortField,
+        string? sortDirection,
+        string? message)
     {
         var advanced = UserAccess.CanUseAdvancedProductTools(User);
-        var products = await productService.GetProductsAsync(new ProductQuery(), advanced);
+        var query = advanced
+            ? ProductQuery.FromRequest(search, discountFilter, sortField, sortDirection, settings)
+            : new ProductQuery();
+        var products = await productService.GetProductsAsync(query, advanced);
+        var filterRanges = ShopVariantPresets.GetFilterRanges(settings);
 
         return View(new ProductsIndexViewModel
         {
@@ -40,7 +49,12 @@ public class ProductsController(ProductService productService, ShopSettings sett
             DiscountHighlightPercent = settings.DiscountHighlightPercent,
             DiscountHighlightColor = settings.DiscountHighlightColor,
             IsProfileVariant = settings.IsProfileVariant,
-            StatusMessage = message
+            StatusMessage = message,
+            Search = query.Search,
+            DiscountFilterKey = query.DiscountFilter.Key,
+            SortField = query.SortField,
+            SortDirection = query.SortDirection,
+            DiscountFilterOptions = filterRanges.ToList()
         });
     }
 
@@ -118,7 +132,7 @@ public class ProductsController(ProductService productService, ShopSettings sett
             return View("Edit", model);
         }
 
-        return RedirectToAction(nameof(Index), new { message = "Товар сохранён." });
+        return RedirectToIndex("Товар сохранён.");
     }
 
     /// <summary>Удаляет товар по идентификатору.</summary>
@@ -130,7 +144,7 @@ public class ProductsController(ProductService productService, ShopSettings sett
     {
         var (success, error) = await productService.DeleteAsync(id);
         var message = success ? "Товар удалён." : error;
-        return RedirectToAction(nameof(Index), new { message });
+        return RedirectToIndex(message);
     }
 
     /// <summary>
@@ -173,6 +187,31 @@ public class ProductsController(ProductService productService, ShopSettings sett
             model.ManufacturerId = model.Manufacturers[0].Id;
         if (model.SupplierId == 0 && model.Suppliers.Count > 0)
             model.SupplierId = model.Suppliers[0].Id;
+    }
+
+    /// <summary>
+    /// Редирект на каталог с сохранением параметров фильтрации из текущего запроса.
+    /// </summary>
+    private IActionResult RedirectToIndex(string? message)
+    {
+        static string Pick(HttpRequest request, string key)
+        {
+            var fromQuery = request.Query[key].ToString();
+            if (!string.IsNullOrEmpty(fromQuery))
+                return fromQuery;
+
+            var fromForm = request.Form[key].ToString();
+            return string.IsNullOrEmpty(fromForm) ? string.Empty : fromForm;
+        }
+
+        return RedirectToAction(nameof(Index), new
+        {
+            message,
+            search = Pick(Request, "search"),
+            discountFilter = Pick(Request, "discountFilter"),
+            sortField = Pick(Request, "sortField"),
+            sortDirection = Pick(Request, "sortDirection")
+        });
     }
 }
 

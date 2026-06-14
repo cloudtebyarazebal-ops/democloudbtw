@@ -45,7 +45,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
-    await DbSeeder.SeedAsync(db, env);
+    var settings = scope.ServiceProvider.GetRequiredService<ShopSettings>();
+    await DbSeeder.SeedAsync(db, env, settings);
 }
 
 // В production — обработчик ошибок и HSTS; в Development middleware не подключается.

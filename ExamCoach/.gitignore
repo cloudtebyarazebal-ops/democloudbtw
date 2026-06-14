@@ -1,0 +1,36 @@
+## Build (.NET)
+bin/
+obj/
+
+## IDE
+.vs/
+*.user
+*.suo
+
+## Локальное состояние ExamCoach (не коммитить)
+DesktopApp/examcoach-state.json
+DesktopApp/examcoach-assignment.json
+**/examcoach-state.json
+
+## База SQLite целевого проекта
+*.db
+*.db-shm
+*.db-wal
+
+## Логи и OS
+*.log
+.DS_Store
+Thumbs.db
+
+## Собранные бинарники (собираются через Build-ExamCoachDesktop.ps1)
+*.dll
+*.exe
+*.pdb
+DesktopApp/*.deps.json
+DesktopApp/*.runtimeconfig.json
+
+## WPF generated (в obj/, но на всякий случай)
+*.baml
+**/App.g.cs
+**/MainWindow.g.cs
+**/ImportAssignmentWindow.g.cs
