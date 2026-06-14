@@ -1,0 +1,134 @@
+================================================================================
+  KodShopWeb + ExamCoach — команды для CMD (Windows)
+================================================================================
+
+Требования: .NET 8 SDK, Git
+
+--------------------------------------------------------------------------------
+1. ПЕРВИЧНАЯ УСТАНОВКА (новый ПК)
+--------------------------------------------------------------------------------
+
+git clone https://github.com/cloudtebyarazebal-ops/democloudbtw.git KodShopWeb
+cd /d KodShopWeb
+powershell -ExecutionPolicy Bypass -File .\setup-workspace.ps1
+
+(ExamCoach клонируется в папку ExamCoach автоматически, если её нет)
+
+Отдельно только ExamCoach:
+git clone https://github.com/cloudtebyarazebal-ops/ExamCoach.git
+
+--------------------------------------------------------------------------------
+2. ГОТОВЫЙ ПРОЕКТ KodShopWeb — ЗАПУСК
+--------------------------------------------------------------------------------
+
+cd /d "C:\Users\User\Desktop\KodShopWeb"
+dotnet build
+dotnet run
+
+Откройте адрес из консоли (обычно https://localhost:5xxx) → /Account/Login
+
+Логины:
+  admin    / admin123    — администратор
+  manager  / manager123  — менеджер
+  client   / client123   — клиент
+
+Кнопка «Просмотр как гость» — без входа.
+
+--------------------------------------------------------------------------------
+3. СВЕРКА ТЗ (без изменений в коде)
+--------------------------------------------------------------------------------
+
+cd /d "C:\Users\User\Desktop\KodShopWeb"
+check-tz.cmd "C:\path\to\tz.txt"
+
+Или:
+dotnet run --project "ExamCoach\tools\AdaptTest\AdaptTest.csproj" -- "C:\path\to\tz.pdf"
+
+--------------------------------------------------------------------------------
+4. ПРИМЕНИТЬ ТЗ К ГОТОВОМУ KodShopWeb
+--------------------------------------------------------------------------------
+
+ВАЖНО: перед apply закройте dotnet run (чтобы сбросилась SQLite БД).
+
+cd /d "C:\Users\User\Desktop\KodShopWeb"
+apply-tz.cmd "C:\path\to\tz.txt"
+
+После применения:
+dotnet build
+dotnet run
+
+Примеры ТЗ:
+apply-tz.cmd "C:\Users\User\Downloads\Telegram Desktop\Новый текстовый документ (3).txt"
+apply-tz.cmd "C:\Users\User\Downloads\Telegram Desktop\В1_КОД ... ПУ (1).pdf"
+
+--------------------------------------------------------------------------------
+5. СОЗДАТЬ НОВЫЙ ПРОЕКТ С НУЛЯ ПОД ТЗ (пустой MVC)
+--------------------------------------------------------------------------------
+
+cd /d "C:\Users\User\Desktop\KodShopWeb"
+apply-empty-tz.cmd "C:\path\to\tz.txt"
+
+В свою папку:
+apply-empty-tz.cmd "C:\path\to\tz.txt" "C:\Projects\MyShop"
+
+Запуск созданного проекта:
+cd /d "C:\Users\User\Desktop\KodShopWeb\NewExamProject"
+dotnet run
+
+Или вручную (любая папка):
+dotnet run --project "ExamCoach\tools\AdaptTest\AdaptTest.csproj" -- "C:\path\to\tz.txt" --apply --init --project-root="C:\Projects\MyShop"
+cd /d C:\Projects\MyShop
+dotnet build
+dotnet run
+
+--------------------------------------------------------------------------------
+6. СБОРКА ExamCoach (desktop + CLI)
+--------------------------------------------------------------------------------
+
+cd /d "C:\Users\User\Desktop\KodShopWeb\ExamCoach"
+dotnet build ExamCoach.sln
+
+Desktop-приложение (тренажёр поверх Visual Studio):
+powershell -ExecutionPolicy Bypass -File .\Build-ExamCoachDesktop.ps1
+.\Start-ExamCoachDesktop.bat
+
+HTML-тренажёр (офлайн):
+powershell -ExecutionPolicy Bypass -File .\Generate-ExamCoach.ps1
+(открыть index.html в браузере)
+
+--------------------------------------------------------------------------------
+7. NUGET (если ставите вручную в новом MVC)
+--------------------------------------------------------------------------------
+
+dotnet add package Microsoft.EntityFrameworkCore.Sqlite --version 8.0.11
+dotnet add package Microsoft.EntityFrameworkCore.Design --version 8.0.11
+dotnet add package ClosedXML --version 0.105.0
+
+--------------------------------------------------------------------------------
+8. СОЗДАТЬ ПУСТОЙ MVC ВРУЧНУЮ (без apply-empty-tz)
+--------------------------------------------------------------------------------
+
+dotnet new mvc -n MyShop -f net8.0 -o C:\Projects\MyShop
+cd /d C:\Projects\MyShop
+dotnet run
+
+Затем применить ТЗ:
+cd /d "C:\Users\User\Desktop\KodShopWeb"
+dotnet run --project "ExamCoach\tools\AdaptTest\AdaptTest.csproj" -- "C:\path\to\tz.txt" --apply --project-root="C:\Projects\MyShop"
+
+--------------------------------------------------------------------------------
+9. ПОЛЕЗНОЕ
+--------------------------------------------------------------------------------
+
+Обновить ExamCoach из GitHub:
+git -C ExamCoach pull
+
+Сбросить БД вручную (если apply не смог удалить файл):
+del kodshop.db kodshop.db-wal kodshop.db-shm
+del bin\Debug\net8.0\kodshop.db*
+
+Репозитории:
+  https://github.com/cloudtebyarazebal-ops/democloudbtw
+  https://github.com/cloudtebyarazebal-ops/ExamCoach
+
+================================================================================
