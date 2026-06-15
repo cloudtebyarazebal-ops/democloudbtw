@@ -141,6 +141,33 @@ public static class ProjectTargetHelper
         doc.Save(csprojPath);
     }
 
+    public static void EnsureProjectIdentity(string projectRoot, string? desiredName)
+    {
+        if (string.IsNullOrWhiteSpace(desiredName))
+            return;
+
+        var csprojPath = FindCsprojPath(projectRoot);
+        if (csprojPath == null)
+            return;
+
+        var doc = XDocument.Load(csprojPath);
+        var root = doc.Root;
+        if (root == null)
+            return;
+
+        var ns = root.Name.Namespace;
+        var propertyGroup = root.Elements(ns + "PropertyGroup").FirstOrDefault();
+        if (propertyGroup == null)
+        {
+            propertyGroup = new XElement(ns + "PropertyGroup");
+            root.AddFirst(propertyGroup);
+        }
+
+        SetProperty(propertyGroup, ns, "RootNamespace", desiredName!);
+        SetProperty(propertyGroup, ns, "AssemblyName", desiredName!);
+        doc.Save(csprojPath);
+    }
+
     public static void EnsureExamCoachExcluded(string projectRoot)
     {
         var csprojPath = FindCsprojPath(projectRoot);
@@ -281,6 +308,15 @@ public static class ProjectTargetHelper
         }
 
         return result;
+    }
+
+    private static void SetProperty(XElement propertyGroup, XNamespace ns, string name, string value)
+    {
+        var element = propertyGroup.Element(ns + name);
+        if (element == null)
+            propertyGroup.Add(new XElement(ns + name, value));
+        else
+            element.Value = value;
     }
 
     private sealed record PackageRef(string Id, string Version);

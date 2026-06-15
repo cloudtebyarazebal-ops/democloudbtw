@@ -14,6 +14,11 @@ public sealed class AssignmentSeedData
     public decimal DiscountHighlightPercent { get; set; } = 10m;
     public string DiscountHighlightColor { get; set; } = "#90EE90";
     public string? ShopName { get; set; }
+    public string? ProjectName { get; set; }
+    public string? FontFamily { get; set; }
+    public string? PrimaryColor { get; set; }
+    public string? SecondaryColor { get; set; }
+    public string? AccentColor { get; set; }
     public bool OrdersEnabled { get; set; } = true;
     public List<DiscountRangeTemplate> DiscountRanges { get; set; } = [];
 }

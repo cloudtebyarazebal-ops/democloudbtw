@@ -38,7 +38,7 @@
                     Checked="VsInsertMode_Changed" Unchecked="VsInsertMode_Changed"/>
           <CheckBox x:Name="AutoScaffoldCheck" Content="Создавать новые файлы в VS (если их ещё нет)" IsChecked="True" Margin="0,0,0,4"/>
           <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"
-                     Text="Глобальные клавиши (работают в VS и когда свёрнуто): F8 — фрагмент (последний → следующий шаг), F7/F9 — шаг, Ctrl+F8 — +10, Ctrl+→ — обводка в VS"/>
+                     Text="Глобальные клавиши (работают в VS и когда свёрнуто): F8 — серый фрагмент-«диктовка», F7/F9 — шаг, Ctrl+F8 — +10, Ctrl+→ — обводка в VS, Ctrl+Alt+F8 — вставить всю страницу"/>
           <Button Content="Создать всю структуру" Margin="0,0,0,4" Padding="6,4" Click="ScaffoldAll_Click"/>
           <CheckBox x:Name="AutoOpenFileCheck" Content="Переключать вкладку в VS (следующий шаг / F8)" IsChecked="True" Margin="0,0,0,8"
                     Checked="AutoOpenVs_Changed" Unchecked="AutoOpenVs_Changed"/>
@@ -94,6 +94,7 @@
           <ComboBoxItem Content="Весь файл" Tag="all"/>
         </ComboBox>
         <Button Content="Показать фрагмент (F8)" Margin="0,0,6,6" Padding="10,6" Click="Reveal_Click"/>
+        <Button Content="Вставить всю страницу (Ctrl+Alt+F8)" Margin="0,0,6,6" Padding="10,6" Click="InsertWholeStep_Click"/>
         <Button Content="Обводка в VS" Margin="0,0,6,6" Padding="10,6" Click="RevealToVs_Click" ToolTip="Серым в VS — вы печатаете поверх (как обводка букв)"/>
         <Button Content="+10 строк" Margin="0,0,6,6" Padding="10,6" Click="Reveal10_Click"/>
         <Button Content="Открыть файл в VS" Margin="0,0,6,6" Padding="10,6" Click="OpenInVs_Click"/>

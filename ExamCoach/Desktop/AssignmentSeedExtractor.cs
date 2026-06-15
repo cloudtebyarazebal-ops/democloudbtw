@@ -25,6 +25,7 @@ public static class AssignmentSeedExtractor
         ExtractDiscountUi(normalized, lower, seed);
         ExtractDiscountRanges(normalized, seed);
         ExtractShopName(normalized, seed);
+        ExtractBranding(normalized, lower, seed);
         EnsureDomainDefaults(seed, req);
         BuildSampleProducts(seed);
 
@@ -150,9 +151,21 @@ public static class AssignmentSeedExtractor
                 seed.DiscountHighlightPercent = percent;
         }
 
-        var colorMatch = Regex.Match(text, @"#(?:23[eE]1[fF][eE][fF]|483[dD]8[bB]|[0-9A-Fa-f]{6})");
-        if (colorMatch.Success)
-            seed.DiscountHighlightColor = colorMatch.Value.ToUpperInvariant();
+        // Цвет подсветки скидки ищем в строках про скидку/подсветку, а не первый HEX в документе.
+        var scopedColor = Regex.Match(text,
+            @"скидк[^\n]{0,200}?(?:фон|подсвет|строк)[^\n]{0,120}?(#[0-9A-Fa-f]{6})",
+            RegexOptions.IgnoreCase);
+        if (scopedColor.Success)
+        {
+            seed.DiscountHighlightColor = scopedColor.Groups[1].Value.ToUpperInvariant();
+            return;
+        }
+
+        var fallbackColor = Regex.Match(text,
+            @"скидк[^\n]{0,160}?(#[0-9A-Fa-f]{6})",
+            RegexOptions.IgnoreCase);
+        if (fallbackColor.Success)
+            seed.DiscountHighlightColor = fallbackColor.Groups[1].Value.ToUpperInvariant();
     }
 
     private static void ExtractDiscountRanges(string text, AssignmentSeedData seed)
@@ -216,6 +229,53 @@ public static class AssignmentSeedExtractor
         var quoted = Regex.Match(text, @"магазин\s+[«""']([^«""']+)[«""']", RegexOptions.IgnoreCase);
         if (quoted.Success)
             seed.ShopName = quoted.Groups[1].Value.Trim();
+
+        if (string.IsNullOrWhiteSpace(seed.ShopName))
+        {
+            var company = Regex.Match(text, @"компан\w*\s+[«""']([^«""']+)[»""']", RegexOptions.IgnoreCase);
+            if (company.Success)
+                seed.ShopName = company.Groups[1].Value.Trim();
+        }
+    }
+
+    private static void ExtractBranding(string text, string lower, AssignmentSeedData seed)
+    {
+        ApplyBrandingHeuristics(lower, seed);
+
+        var fontMatch = Regex.Match(text,
+            @"(Times New Roman|Arial|Segoe UI|Calibri|Tahoma|Verdana|Roboto|Inter)",
+            RegexOptions.IgnoreCase);
+        if (fontMatch.Success)
+            seed.FontFamily = NormalizeFontFamily(fontMatch.Value);
+
+        foreach (var (hex, context) in ExtractHexWithContext(text))
+        {
+            ApplyColorByContext(hex, context, seed);
+        }
+
+        var colors = Regex.Matches(text, @"#[0-9A-Fa-f]{6}")
+            .Select(m => m.Value.ToUpperInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var remaining = colors.Where(c =>
+                !string.Equals(c, seed.AccentColor, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(c, seed.SecondaryColor, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(c, seed.PrimaryColor, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (string.IsNullOrWhiteSpace(seed.AccentColor) && remaining.Count > 0)
+            seed.AccentColor = remaining[0];
+        if (string.IsNullOrWhiteSpace(seed.SecondaryColor) && remaining.Count > 1)
+            seed.SecondaryColor = remaining[1];
+        if (string.IsNullOrWhiteSpace(seed.PrimaryColor) && remaining.Count > 2)
+            seed.PrimaryColor = remaining[2];
+
+        if (string.IsNullOrWhiteSpace(seed.ProjectName))
+        {
+            var source = !string.IsNullOrWhiteSpace(seed.ShopName) ? seed.ShopName : seed.DomainLabel;
+            seed.ProjectName = BuildProjectName(source);
+        }
     }
 
     private static void EnsureDomainDefaults(AssignmentSeedData seed, AssignmentRequirements req)
@@ -233,6 +293,12 @@ public static class AssignmentSeedExtractor
 
         if (string.IsNullOrWhiteSpace(seed.ShopName))
             seed.ShopName = GetDefaultShopName(req);
+
+        seed.FontFamily ??= GetDefaultFont(req.ProductWord);
+        seed.SecondaryColor ??= "#2E8B57";
+        seed.AccentColor ??= "#006400";
+        seed.PrimaryColor ??= "#FFFFFF";
+        seed.ProjectName ??= BuildProjectName(seed.ShopName ?? req.BrandName);
     }
 
     private static void BuildSampleProducts(AssignmentSeedData seed)
@@ -382,4 +448,169 @@ public static class AssignmentSeedExtractor
 
     private static decimal ParseDecimal(string value) =>
         decimal.Parse(value.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string NormalizeFontFamily(string font) =>
+        font.Trim().ToLowerInvariant() switch
+        {
+            "times new roman" => "Times New Roman, serif",
+            "arial" => "Arial, sans-serif",
+            "segoe ui" => "Segoe UI, sans-serif",
+            "calibri" => "Calibri, sans-serif",
+            "tahoma" => "Tahoma, sans-serif",
+            "verdana" => "Verdana, sans-serif",
+            "roboto" => "Roboto, sans-serif",
+            "inter" => "Inter, sans-serif",
+            _ => "Arial, sans-serif"
+        };
+
+    private static void ApplyBrandingHeuristics(string lower, AssignmentSeedData seed)
+    {
+        if (string.IsNullOrWhiteSpace(seed.FontFamily))
+        {
+            if (Regex.IsMatch(lower, @"классическ|книжн|с\s+засечк"))
+                seed.FontFamily = "Times New Roman, serif";
+            else if (Regex.IsMatch(lower, @"без\s+засеч|читабельн|нейтральн"))
+                seed.FontFamily = "Arial, sans-serif";
+            else if (Regex.IsMatch(lower, @"современ|минимал|windows|интерфейс"))
+                seed.FontFamily = "Segoe UI, sans-serif";
+            else if (Regex.IsMatch(lower, @"техн|цифров|hi[-\s]?tech"))
+                seed.FontFamily = "Roboto, sans-serif";
+        }
+
+        // Цвета по текстовым формулировкам ТЗ (даже без HEX).
+        if (Regex.IsMatch(lower, @"фирменн\w*\s+цвет|цветов\w*\s+схем|палитр"))
+        {
+            seed.AccentColor ??= InferColorFromWords(lower, ColorRole.Accent);
+            seed.SecondaryColor ??= InferColorFromWords(lower, ColorRole.Secondary);
+            seed.PrimaryColor ??= InferColorFromWords(lower, ColorRole.Primary);
+        }
+    }
+
+    private static IEnumerable<(string Hex, string Context)> ExtractHexWithContext(string text)
+    {
+        var lines = text.Split('\n');
+        foreach (var line in lines)
+        {
+            var context = line.ToLowerInvariant();
+            foreach (Match match in Regex.Matches(line, @"#[0-9A-Fa-f]{6}"))
+                yield return (match.Value.ToUpperInvariant(), context);
+        }
+    }
+
+    private static void ApplyColorByContext(string hex, string context, AssignmentSeedData seed)
+    {
+        if ((context.Contains("фон") || context.Contains("background") || context.Contains("страниц")) &&
+            (context.Contains("главного") || context.Contains("окна") || context.Contains("главн")))
+        {
+            seed.PrimaryColor = hex;
+            return;
+        }
+
+        if (context.Contains("акцент") || context.Contains("кноп") || context.Contains("заголов"))
+        {
+            // Для формулировок «заголовки окон» используем secondary, а «кнопки/акцент» — accent.
+            if (context.Contains("заголов"))
+                seed.SecondaryColor = hex;
+            else
+                seed.AccentColor = hex;
+            return;
+        }
+
+        if (context.Contains("вторич") || context.Contains("дополн") || context.Contains("secondary"))
+        {
+            seed.SecondaryColor = hex;
+            return;
+        }
+    }
+
+    private enum ColorRole { Primary, Secondary, Accent }
+
+    private static string? InferColorFromWords(string lower, ColorRole role)
+    {
+        // В учебных ТЗ часто используются словесные описания без HEX.
+        var colorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["зелен"] = "#2E8B57",
+            ["салатов"] = "#90EE90",
+            ["син"] = "#4682B4",
+            ["фиолет"] = "#6A5ACD",
+            ["жёлт"] = "#FFD966",
+            ["желт"] = "#FFD966",
+            ["золот"] = "#DAA520",
+            ["красн"] = "#DC2626",
+            ["сер"] = "#E5E7EB",
+            ["бел"] = "#FFFFFF",
+            ["чёрн"] = "#111827",
+            ["черн"] = "#111827"
+        };
+
+        var roleHint = role switch
+        {
+            ColorRole.Primary => @"фон|основн",
+            ColorRole.Secondary => @"вторич|дополн",
+            _ => @"акцент|кноп|заголов"
+        };
+
+        foreach (var pair in colorMap)
+        {
+            if (!lower.Contains(pair.Key, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (Regex.IsMatch(lower, roleHint))
+                return pair.Value;
+        }
+
+        return null;
+    }
+
+    private static string GetDefaultFont(string productWord)
+    {
+        if (productWord.Contains("книг", StringComparison.OrdinalIgnoreCase))
+            return "Times New Roman, serif";
+        if (productWord.Contains("комплектующ", StringComparison.OrdinalIgnoreCase))
+            return "Segoe UI, sans-serif";
+        return "Arial, sans-serif";
+    }
+
+    private static string BuildProjectName(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+            return "KodShopWeb";
+
+        var map = new Dictionary<char, string>
+        {
+            ['а']="a",['б']="b",['в']="v",['г']="g",['д']="d",['е']="e",['ё']="e",['ж']="zh",['з']="z",
+            ['и']="i",['й']="y",['к']="k",['л']="l",['м']="m",['н']="n",['о']="o",['п']="p",['р']="r",
+            ['с']="s",['т']="t",['у']="u",['ф']="f",['х']="h",['ц']="ts",['ч']="ch",['ш']="sh",['щ']="sch",
+            ['ъ']="",['ы']="y",['ь']="",['э']="e",['ю']="yu",['я']="ya"
+        };
+
+        var latin = new System.Text.StringBuilder();
+        foreach (var ch in source.Trim())
+        {
+            var lower = char.ToLowerInvariant(ch);
+            if (map.TryGetValue(lower, out var tr))
+            {
+                latin.Append(tr);
+                continue;
+            }
+
+            if (char.IsLetterOrDigit(ch))
+                latin.Append(ch);
+            else
+                latin.Append(' ');
+        }
+
+        var words = latin.ToString()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => char.ToUpperInvariant(w[0]) + w[1..].ToLowerInvariant())
+            .ToList();
+
+        var name = string.Concat(words);
+        if (string.IsNullOrWhiteSpace(name))
+            return "KodShopWeb";
+        if (!char.IsLetter(name[0]))
+            name = "Shop" + name;
+        return name.Length > 40 ? name[..40] : name;
+    }
 }

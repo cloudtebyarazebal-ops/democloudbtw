@@ -11,7 +11,8 @@ public enum GlobalHotkeyAction
     RevealToVs,
     PrevStep,
     NextStep,
-    RevealTen
+    RevealTen,
+    InsertWholeStep
 }
 
 public sealed class GlobalHotkeyService : IDisposable
@@ -38,6 +39,7 @@ public sealed class GlobalHotkeyService : IDisposable
         TryRegister(ModifierKeys.None, Key.F8, GlobalHotkeyAction.NextFragment);
         TryRegister(ModifierKeys.Control, Key.F8, GlobalHotkeyAction.RevealTen);
         TryRegister(ModifierKeys.Control, Key.Right, GlobalHotkeyAction.RevealToVs);
+        TryRegister(ModifierKeys.Control | ModifierKeys.Alt, Key.F8, GlobalHotkeyAction.InsertWholeStep);
         TryRegister(ModifierKeys.None, Key.F7, GlobalHotkeyAction.PrevStep);
         TryRegister(ModifierKeys.None, Key.F9, GlobalHotkeyAction.NextStep);
     }

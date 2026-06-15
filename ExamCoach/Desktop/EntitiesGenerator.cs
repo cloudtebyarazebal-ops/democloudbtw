@@ -3,12 +3,59 @@ namespace ExamCoachDesktop;
 /// <summary>Полностью генерирует Models/Entities.cs под домен из ТЗ.</summary>
 public static class EntitiesGenerator
 {
-    public static string Generate(bool authorMode, string rootNamespace = "KodShopWeb")
+    public static string Generate(bool authorMode, bool ordersEnabled = true, string rootNamespace = "KodShopWeb")
     {
         var makerType = authorMode ? "Author" : "Manufacturer";
         var makerLabel = authorMode ? "автора" : "производителя";
         var makerLabelCap = authorMode ? "Автор" : "Производитель";
         var makerId = makerType + "Id";
+        var appUserOrders = ordersEnabled
+            ? "    public ICollection<Order> Orders { get; set; } = [];"
+            : string.Empty;
+        var productOrderItems = ordersEnabled
+            ? "    public ICollection<OrderItem> OrderItems { get; set; } = [];\n"
+            : string.Empty;
+        var ordersBlock = ordersEnabled
+            ? $$"""
+/// <summary>Пункт выдачи заказа.</summary>
+public class PickupPoint
+{
+    public int Id { get; set; }
+    public string Address { get; set; } = string.Empty;
+    public ICollection<Order> Orders { get; set; } = [];
+}
+
+/// <summary>Заказ клиента.</summary>
+public class Order
+{
+    public int Id { get; set; }
+    public string Article { get; set; } = string.Empty;
+    public OrderStatus Status { get; set; }
+    public DateTime OrderDate { get; set; }
+    public DateTime? DeliveryDate { get; set; }
+    public string PickupCode { get; set; } = string.Empty;
+    public int PickupPointId { get; set; }
+    public PickupPoint PickupPoint { get; set; } = null!;
+    public int? ClientId { get; set; }
+    public AppUser? Client { get; set; }
+    public ICollection<OrderItem> Items { get; set; } = [];
+
+    public decimal TotalAmount => Items.Sum(i =>
+        i.Product is null ? 0m : i.Quantity * i.Product.FinalPrice);
+}
+
+/// <summary>Позиция заказа.</summary>
+public class OrderItem
+{
+    public int Id { get; set; }
+    public int OrderId { get; set; }
+    public Order Order { get; set; } = null!;
+    public int ProductId { get; set; }
+    public Product Product { get; set; } = null!;
+    public int Quantity { get; set; }
+}
+"""
+            : string.Empty;
 
         return $$"""
 namespace {{rootNamespace}}.Models;
@@ -24,7 +71,7 @@ public class AppUser
     public string Password { get; set; } = string.Empty;
     public UserRole Role { get; set; }
     public string? Email { get; set; }
-    public ICollection<Order> Orders { get; set; } = [];
+{{appUserOrders}}
 }
 
 /// <summary>Категория товара.</summary>
@@ -73,7 +120,7 @@ public class Product
     public int SupplierId { get; set; }
     public Supplier Supplier { get; set; } = null!;
 
-    public ICollection<OrderItem> OrderItems { get; set; } = [];
+{{productOrderItems}}
 
     public decimal FinalPrice => Discount > 0
         ? Math.Round(Price * (1 - Discount / 100m), 2)
@@ -81,44 +128,7 @@ public class Product
 
     public bool HasDiscount => Discount > 0;
 }
-
-/// <summary>Пункт выдачи заказа.</summary>
-public class PickupPoint
-{
-    public int Id { get; set; }
-    public string Address { get; set; } = string.Empty;
-    public ICollection<Order> Orders { get; set; } = [];
-}
-
-/// <summary>Заказ клиента.</summary>
-public class Order
-{
-    public int Id { get; set; }
-    public string Article { get; set; } = string.Empty;
-    public OrderStatus Status { get; set; }
-    public DateTime OrderDate { get; set; }
-    public DateTime? DeliveryDate { get; set; }
-    public string PickupCode { get; set; } = string.Empty;
-    public int PickupPointId { get; set; }
-    public PickupPoint PickupPoint { get; set; } = null!;
-    public int? ClientId { get; set; }
-    public AppUser? Client { get; set; }
-    public ICollection<OrderItem> Items { get; set; } = [];
-
-    public decimal TotalAmount => Items.Sum(i =>
-        i.Product is null ? 0m : i.Quantity * i.Product.FinalPrice);
-}
-
-/// <summary>Позиция заказа.</summary>
-public class OrderItem
-{
-    public int Id { get; set; }
-    public int OrderId { get; set; }
-    public Order Order { get; set; } = null!;
-    public int ProductId { get; set; }
-    public Product Product { get; set; } = null!;
-    public int Quantity { get; set; }
-}
+{{ordersBlock}}
 """;
     }
 }

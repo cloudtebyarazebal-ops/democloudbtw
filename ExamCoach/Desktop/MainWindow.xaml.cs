@@ -222,7 +222,8 @@ public partial class MainWindow : Window
             switch (action)
             {
                 case GlobalHotkeyAction.NextFragment:
-                    Reveal(1);
+                    // F8 всегда ведёт себя как «диктовка»: серый текст в VS.
+                    Reveal(1, forceTrace: true);
                     break;
                 case GlobalHotkeyAction.RevealTen:
                     Reveal(10);
@@ -235,6 +236,9 @@ public partial class MainWindow : Window
                     break;
                 case GlobalHotkeyAction.NextStep:
                     Next_Click(this, new RoutedEventArgs());
+                    break;
+                case GlobalHotkeyAction.InsertWholeStep:
+                    InsertWholeStep();
                     break;
             }
         });
@@ -420,7 +424,7 @@ public partial class MainWindow : Window
             "Структура создана", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private void InsertRevealedToVs(int fromIndex, int toIndex)
+    private void InsertRevealedToVs(int fromIndex, int toIndex, bool forceTrace = false)
     {
         if (toIndex <= fromIndex) return;
         if (!EnsureVsConnected()) return;
@@ -428,7 +432,7 @@ public partial class MainWindow : Window
         var chunk = FragmentBuilder.Join(_fragments.Skip(fromIndex).Take(toIndex - fromIndex), _mode);
         if (string.IsNullOrEmpty(chunk)) return;
 
-        if (TraceModeCheck.IsChecked == true)
+        if (forceTrace || TraceModeCheck.IsChecked == true)
         {
             OpenCurrentStepInVs();
             if (_vs.ShowTraceHint(chunk))
@@ -713,7 +717,8 @@ public partial class MainWindow : Window
         CodeView.Inlines.Add(new Run(pending) { Foreground = (Brush)FindResource("PendingBrush") });
 
         FragmentInfo.Text = !string.IsNullOrEmpty(step.Code)
-            ? $"Фрагмент {_fragmentIndex} / {_fragments.Count} ({_mode}). F8 — следующий; после последнего — переход к следующему шагу и файл в VS." +
+            ? $"Фрагмент {_fragmentIndex} / {_fragments.Count} ({_mode}). F8 — серый фрагмент в VS; после последнего — следующий шаг." +
+              " Ctrl+Alt+F8 — вставить весь шаг (страницу)." +
               (TraceModeCheck.IsChecked == true ? " Пишите в VS, Пробел — как обычно." :
                InsertToVsCheck.IsChecked == true ? " + вставка в VS." : "")
             : "Код не нужен — выполните действия в Visual Studio.";
@@ -790,6 +795,7 @@ public partial class MainWindow : Window
 
     private void Reveal_Click(object sender, RoutedEventArgs e) => Reveal(1);
     private void Reveal10_Click(object sender, RoutedEventArgs e) => Reveal(10);
+    private void InsertWholeStep_Click(object sender, RoutedEventArgs e) => InsertWholeStep();
     private void RevealToVs_Click(object sender, RoutedEventArgs e)
     {
         OpenCurrentStepInVs();
@@ -797,11 +803,11 @@ public partial class MainWindow : Window
         _vs.ActivateVisualStudio();
     }
 
-    private void Reveal(int count)
+    private void Reveal(int count, bool forceTrace = false)
     {
         var oldIndex = _fragmentIndex;
         _fragmentIndex = Math.Min(_fragmentIndex + count, _fragments.Count);
-        InsertRevealedToVs(oldIndex, _fragmentIndex);
+        InsertRevealedToVs(oldIndex, _fragmentIndex, forceTrace);
         UpdateCodeView();
 
         if (_fragments.Count > 0 &&
@@ -810,6 +816,28 @@ public partial class MainWindow : Window
         {
             AdvanceToNextStep(markCurrentDone: true);
         }
+    }
+
+    private void InsertWholeStep()
+    {
+        if (_current >= _data.Steps.Count) return;
+        var step = _data.Steps[_current];
+        if (string.IsNullOrWhiteSpace(step.Code)) return;
+        if (!EnsureVsConnected()) return;
+
+        OpenCurrentStepInVs();
+        _vs.ClearGhostHint();
+        if (!_vs.ReplaceActiveDocument(step.Code))
+        {
+            VsConnectionText.Text = _vs.Status;
+            return;
+        }
+
+        _fragmentIndex = _fragments.Count;
+        UpdateCodeView();
+        VsConnectionText.Text = "Вставлена целая страница (шаг) в Visual Studio";
+        _vs.ActivateVisualStudio();
+        AdvanceToNextStep(markCurrentDone: true);
     }
 
     private void ConnectVs_Click(object sender, RoutedEventArgs e) => TryConnectVisualStudio();

@@ -14,14 +14,18 @@ public static class ApplyAdaptedProject
         var basePath = Path.Combine(coachRoot, "steps-data.json");
         var desktopApp = Path.Combine(coachRoot, "DesktopApp");
 
-        if (initIfEmpty && !ProjectTargetHelper.IsWebProject(projectRoot))
-            ProjectTargetHelper.InitMvcProject(projectRoot);
-
         var text = AssignmentDocumentReader.ReadFile(pdfPath);
         var profile = AssignmentTextParser.Parse(text);
         var adapted = AssignmentAdaptEngine.Adapt(CoachLoader.Load(basePath), profile);
+        var seed = profile.Requirements?.SeedData
+            ?? AssignmentSeedExtractor.Extract(text, profile.Requirements ?? new AssignmentRequirements());
         profile.SourceText = text;
         profile.AppliedAt = DateTime.UtcNow;
+
+        if (initIfEmpty && !ProjectTargetHelper.IsWebProject(projectRoot))
+            ProjectTargetHelper.InitMvcProject(projectRoot, seed.ProjectName);
+
+        ProjectTargetHelper.EnsureProjectIdentity(projectRoot, seed.ProjectName);
 
         Directory.CreateDirectory(desktopApp);
         File.WriteAllText(
@@ -38,7 +42,7 @@ public static class ApplyAdaptedProject
                 .Where(s => LooksLikeProjectFile(s.Title))
                 .Select(s => s.Title);
             ProjectTargetHelper.EnsureFolderStructure(projectRoot, relativePaths);
-            Console.WriteLine($"Режим: заполнение {(initIfEmpty ? "нового" : "пустого")} проекта (namespace: {rootNamespace})");
+            Console.WriteLine($"Режим: заполнение {(initIfEmpty ? "нового" : "пустого")} проекта (namespace: {rootNamespace}, project: {seed.ProjectName ?? rootNamespace})");
         }
 
         string? csprojTemplate = null;
@@ -71,19 +75,18 @@ public static class ApplyAdaptedProject
         ProjectTargetHelper.EnsureNuGetPackages(projectRoot, csprojTemplate);
         ProjectTargetHelper.EnsureExamCoachExcluded(projectRoot);
 
-        var seed = profile.Requirements?.SeedData
-            ?? AssignmentSeedExtractor.Extract(text, profile.Requirements ?? new AssignmentRequirements());
         var authorMode = seed.UseAuthorField;
 
         if (scaffoldMode)
             ProjectTargetHelper.CleanupDefaultMvcTemplate(projectRoot);
 
         NormalizeDomainConsistency(projectRoot, authorMode);
-        RewriteEntities(projectRoot, authorMode, rootNamespace);
-        RewriteAppDbContextDbSets(projectRoot, authorMode);
+        RewriteEntities(projectRoot, authorMode, seed.OrdersEnabled, rootNamespace);
+        RewriteAppDbContextDbSets(projectRoot, authorMode, seed.OrdersEnabled);
         RewriteDbSeeder(projectRoot, seed, rootNamespace);
         ApplyShopSettingsFromSeed(projectRoot, seed, profile.ExamVariant);
         NormalizeImportViewModelConsistency(projectRoot);
+        NormalizeNoOrdersProject(projectRoot, seed.OrdersEnabled);
         ResetSqliteDatabase(projectRoot);
         return written;
     }
@@ -408,7 +411,7 @@ public static class ApplyAdaptedProject
     /// Полностью переписывает AppDbContext.cs — обнуляет все DbSet'ы и вставляет правильные
     /// (Author или Manufacturer) в зависимости от ТЗ.
     /// </summary>
-    private static void RewriteAppDbContextDbSets(string projectRoot, bool authorMode)
+    private static void RewriteAppDbContextDbSets(string projectRoot, bool authorMode, bool ordersEnabled)
     {
         var path = Path.Combine(projectRoot, "Data", "AppDbContext.cs");
         if (!File.Exists(path))
@@ -425,7 +428,7 @@ public static class ApplyAdaptedProject
             return;
 
         var dbSets = authorMode
-            ? """
+            ? (ordersEnabled ? """
             /// <summary>Таблица пользователей.</summary>
             public DbSet<AppUser> Users => Set<AppUser>();
 
@@ -449,8 +452,23 @@ public static class ApplyAdaptedProject
 
             /// <summary>Таблица позиций заказов.</summary>
             public DbSet<OrderItem> OrderItems => Set<OrderItem>();
-            """
-            : """
+            """ : """
+            /// <summary>Таблица пользователей.</summary>
+            public DbSet<AppUser> Users => Set<AppUser>();
+
+            /// <summary>Таблица категорий товаров.</summary>
+            public DbSet<Category> Categories => Set<Category>();
+
+            /// <summary>Таблица авторов.</summary>
+            public DbSet<Author> Authors => Set<Author>();
+
+            /// <summary>Таблица поставщиков.</summary>
+            public DbSet<Supplier> Suppliers => Set<Supplier>();
+
+            /// <summary>Таблица товаров.</summary>
+            public DbSet<Product> Products => Set<Product>();
+            """)
+            : (ordersEnabled ? """
             /// <summary>Таблица пользователей.</summary>
             public DbSet<AppUser> Users => Set<AppUser>();
 
@@ -474,19 +492,52 @@ public static class ApplyAdaptedProject
 
             /// <summary>Таблица позиций заказов.</summary>
             public DbSet<OrderItem> OrderItems => Set<OrderItem>();
-            """;
+            """ : """
+            /// <summary>Таблица пользователей.</summary>
+            public DbSet<AppUser> Users => Set<AppUser>();
+
+            /// <summary>Таблица категорий товаров.</summary>
+            public DbSet<Category> Categories => Set<Category>();
+
+            /// <summary>Таблица производителей.</summary>
+            public DbSet<Manufacturer> Manufacturers => Set<Manufacturer>();
+
+            /// <summary>Таблица поставщиков.</summary>
+            public DbSet<Supplier> Suppliers => Set<Supplier>();
+
+            /// <summary>Таблица товаров.</summary>
+            public DbSet<Product> Products => Set<Product>();
+            """);
 
         var replacement = $"// --- Наборы сущностей (таблицы) ---\n\n{dbSets}\n\n        protected override void OnModelCreating";
         var updated = pattern.Replace(code, replacement);
+
+        if (!ordersEnabled)
+            updated = RemoveOrderMappingsFromDbContext(updated);
 
         if (!string.Equals(code, updated, StringComparison.Ordinal))
             File.WriteAllText(path, updated, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
-    private static void RewriteEntities(string projectRoot, bool authorMode, string rootNamespace)
+    private static string RemoveOrderMappingsFromDbContext(string code)
+    {
+        code = Regex.Replace(code,
+            @"\s*modelBuilder\.Entity<Order>\(entity =>\s*\{[\s\S]*?\}\);\s*",
+            "\n",
+            RegexOptions.Singleline);
+
+        code = Regex.Replace(code,
+            @"\s*modelBuilder\.Entity<OrderItem>\(entity =>\s*\{[\s\S]*?\}\);\s*",
+            "\n",
+            RegexOptions.Singleline);
+
+        return code;
+    }
+
+    private static void RewriteEntities(string projectRoot, bool authorMode, bool ordersEnabled, string rootNamespace)
     {
         var path = Path.Combine(projectRoot, "Models", "Entities.cs");
-        var code = EntitiesGenerator.Generate(authorMode, rootNamespace);
+        var code = EntitiesGenerator.Generate(authorMode, ordersEnabled, rootNamespace);
         File.WriteAllText(path, code, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
@@ -522,11 +573,58 @@ public static class ApplyAdaptedProject
                 .Replace("OrdersEnabled { get; set; } = false", $"OrdersEnabled {{ get; set; }} = {(seed.OrdersEnabled ? "true" : "false")}")
                 .Replace("OrdersEnabled { get; set; } = true", $"OrdersEnabled {{ get; set; }} = {(seed.OrdersEnabled ? "true" : "false")}");
 
+            updated = Regex.Replace(updated,
+                @"settings\.DiscountHighlightPercent\s*=\s*[\d.]+m;",
+                $"settings.DiscountHighlightPercent = {seed.DiscountHighlightPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)}m;");
+            updated = Regex.Replace(updated,
+                @"settings\.DiscountHighlightColor\s*=\s*""[^""]+"";",
+                $"settings.DiscountHighlightColor = \"{seed.DiscountHighlightColor}\";");
+
             if (!string.IsNullOrWhiteSpace(seed.ShopName))
             {
                 updated = Regex.Replace(updated,
                     "ShopName \\{ get; set; \\} = \"[^\"]+\";",
                     $"ShopName {{ get; set; }} = \"{seed.ShopName}\";");
+                updated = Regex.Replace(updated,
+                    @"settings\.ShopName\s*=\s*""[^""]+"";",
+                    $"settings.ShopName = \"{seed.ShopName}\";");
+            }
+
+            if (!string.IsNullOrWhiteSpace(seed.FontFamily))
+            {
+                updated = Regex.Replace(updated,
+                    "FontFamily \\{ get; set; \\} = \"[^\"]+\";",
+                    $"FontFamily {{ get; set; }} = \"{seed.FontFamily}\";");
+                updated = Regex.Replace(updated,
+                    @"settings\.FontFamily\s*=\s*""[^""]+"";",
+                    $"settings.FontFamily = \"{seed.FontFamily}\";");
+            }
+
+            if (!string.IsNullOrWhiteSpace(seed.PrimaryColor))
+            {
+                updated = Regex.Replace(updated,
+                    "PrimaryColor \\{ get; set; \\} = \"[^\"]+\";",
+                    $"PrimaryColor {{ get; set; }} = \"{seed.PrimaryColor}\";");
+            }
+
+            if (!string.IsNullOrWhiteSpace(seed.SecondaryColor))
+            {
+                updated = Regex.Replace(updated,
+                    "SecondaryColor \\{ get; set; \\} = \"[^\"]+\";",
+                    $"SecondaryColor {{ get; set; }} = \"{seed.SecondaryColor}\";");
+                updated = Regex.Replace(updated,
+                    @"settings\.SecondaryColor\s*=\s*""[^""]+"";",
+                    $"settings.SecondaryColor = \"{seed.SecondaryColor}\";");
+            }
+
+            if (!string.IsNullOrWhiteSpace(seed.AccentColor))
+            {
+                updated = Regex.Replace(updated,
+                    "AccentColor \\{ get; set; \\} = \"[^\"]+\";",
+                    $"AccentColor {{ get; set; }} = \"{seed.AccentColor}\";");
+                updated = Regex.Replace(updated,
+                    @"settings\.AccentColor\s*=\s*""[^""]+"";",
+                    $"settings.AccentColor = \"{seed.AccentColor}\";");
             }
 
             if (!string.Equals(code, updated, StringComparison.Ordinal))
@@ -554,9 +652,100 @@ public static class ApplyAdaptedProject
                     $"\"ShopName\": \"{seed.ShopName}\"");
             }
 
+            if (!string.IsNullOrWhiteSpace(seed.FontFamily))
+            {
+                updated = Regex.Replace(updated,
+                    "\"FontFamily\"\\s*:\\s*\"[^\"]+\"",
+                    $"\"FontFamily\": \"{seed.FontFamily}\"");
+            }
+
+            if (!string.IsNullOrWhiteSpace(seed.PrimaryColor))
+            {
+                updated = Regex.Replace(updated,
+                    "\"PrimaryColor\"\\s*:\\s*\"[^\"]+\"",
+                    $"\"PrimaryColor\": \"{seed.PrimaryColor}\"");
+            }
+
+            if (!string.IsNullOrWhiteSpace(seed.SecondaryColor))
+            {
+                updated = Regex.Replace(updated,
+                    "\"SecondaryColor\"\\s*:\\s*\"[^\"]+\"",
+                    $"\"SecondaryColor\": \"{seed.SecondaryColor}\"");
+            }
+
+            if (!string.IsNullOrWhiteSpace(seed.AccentColor))
+            {
+                updated = Regex.Replace(updated,
+                    "\"AccentColor\"\\s*:\\s*\"[^\"]+\"",
+                    $"\"AccentColor\": \"{seed.AccentColor}\"");
+            }
+
             if (!string.Equals(json, updated, StringComparison.Ordinal))
                 File.WriteAllText(appsettingsPath, updated, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         }
+
+        var rootNamespace = ProjectTargetHelper.GetRootNamespace(projectRoot);
+        ApplyLayoutBranding(projectRoot);
+        ApplyLoginBranding(projectRoot, rootNamespace);
+        ApplyCssBranding(projectRoot);
+    }
+
+    private static void ApplyLayoutBranding(string projectRoot)
+    {
+        var layoutPath = Path.Combine(projectRoot, "Views", "Shared", "_Layout.cshtml");
+        if (!File.Exists(layoutPath))
+            return;
+
+        var code = File.ReadAllText(layoutPath);
+        var updated = code.Replace(
+            "<body style=\"--shop-font:@Settings.FontFamily; --shop-secondary:@Settings.SecondaryColor; --shop-accent:@Settings.AccentColor;\">",
+            "<body style=\"--shop-font:@Settings.FontFamily; --shop-primary:@Settings.PrimaryColor; --shop-secondary:@Settings.SecondaryColor; --shop-accent:@Settings.AccentColor;\">");
+
+        if (!string.Equals(code, updated, StringComparison.Ordinal))
+            File.WriteAllText(layoutPath, updated, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+    }
+
+    private static void ApplyLoginBranding(string projectRoot, string rootNamespace)
+    {
+        var loginPath = Path.Combine(projectRoot, "Views", "Account", "Login.cshtml");
+        if (!File.Exists(loginPath))
+            return;
+
+        var code = File.ReadAllText(loginPath);
+        var updated = code;
+
+        if (!updated.Contains("@inject", StringComparison.Ordinal) ||
+            !updated.Contains("ShopSettings Settings", StringComparison.Ordinal))
+        {
+            updated = Regex.Replace(updated,
+                @"(@model\s+[^\n]*LoginViewModel[^\n]*)",
+                $"$1\n@inject {rootNamespace}.Models.ShopSettings Settings",
+                RegexOptions.Multiline);
+        }
+
+        updated = Regex.Replace(updated,
+            "<title>[^<]*</title>",
+            "<title>Вход — @Settings.ShopName</title>");
+
+        updated = updated.Replace("<body>", "<body style=\"--shop-font:@Settings.FontFamily; --shop-primary:@Settings.PrimaryColor; --shop-secondary:@Settings.SecondaryColor; --shop-accent:@Settings.AccentColor;\">");
+
+        if (!string.Equals(code, updated, StringComparison.Ordinal))
+            File.WriteAllText(loginPath, updated, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+    }
+
+    private static void ApplyCssBranding(string projectRoot)
+    {
+        var cssPath = Path.Combine(projectRoot, "wwwroot", "css", "shop.css");
+        if (!File.Exists(cssPath))
+            return;
+
+        var code = File.ReadAllText(cssPath);
+        var updated = code
+            .Replace("background: #f4f6fb;", "background: var(--shop-primary, #f4f6fb);")
+            .Replace("background: linear-gradient(135deg, #eef2ff, #f8fafc);", "background: linear-gradient(135deg, var(--shop-primary, #eef2ff), #f8fafc);");
+
+        if (!string.Equals(code, updated, StringComparison.Ordinal))
+            File.WriteAllText(cssPath, updated, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
     private static void NormalizeImportViewModelConsistency(string projectRoot)
@@ -599,6 +788,25 @@ public class ImportViewModel
 """;
 
         File.WriteAllText(viewModelsPath, code + append, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+    }
+
+    private static void NormalizeNoOrdersProject(string projectRoot, bool ordersEnabled)
+    {
+        if (ordersEnabled)
+            return;
+
+        var productServicePath = Path.Combine(projectRoot, "Services", "ProductService.cs");
+        if (File.Exists(productServicePath))
+        {
+            var code = File.ReadAllText(productServicePath);
+            var updated = code
+                .Replace(".Include(p => p.OrderItems)", string.Empty)
+                .Replace("        if (product.OrderItems.Count > 0)\n            return (false, \"Нельзя удалить товар, который присутствует в заказе.\");\n\n", string.Empty)
+                .Replace("        if (product.OrderItems.Count > 0)\r\n            return (false, \"Нельзя удалить товар, который присутствует в заказе.\");\r\n\r\n", string.Empty);
+
+            if (!string.Equals(code, updated, StringComparison.Ordinal))
+                File.WriteAllText(productServicePath, updated, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
     }
 
     private static void ResetSqliteDatabase(string projectRoot)

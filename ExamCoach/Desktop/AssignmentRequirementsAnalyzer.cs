@@ -107,6 +107,36 @@ public static class AssignmentRequirementsAnalyzer
 
         if (DetectAuthorField(text, lower))
             req.Features.Add(AssignmentFeatures.AuthorField);
+
+        ApplyNegativeFeatureOverrides(lower, req);
+    }
+
+    private static void ApplyNegativeFeatureOverrides(string lower, AssignmentRequirements req)
+    {
+        // Явные запреты из ТЗ: «раздел ... отсутствует», «... не требуется».
+        if (Regex.IsMatch(lower, @"раздел\s+заказ\w*\s+.*отсутств|заказ\w*[^\n]{0,80}не\s+требуетс|не\s+требуетс[^\n]{0,80}заказ"))
+        {
+            req.Features.Remove(AssignmentFeatures.Orders);
+            req.Features.Remove(AssignmentFeatures.PickupPoints);
+            req.Features.Remove(AssignmentFeatures.OrderDelivery);
+            req.Features.Remove(AssignmentFeatures.OrderStatusDetail);
+            req.Modules.Remove("m4");
+        }
+
+        if (Regex.IsMatch(lower, @"импорт[^\n]{0,80}не\s+требуетс|не\s+требуетс[^\n]{0,80}импорт"))
+            req.Features.Remove(AssignmentFeatures.Import);
+
+        if (Regex.IsMatch(lower, @"crud[^\n]{0,80}не\s+требуетс|добавл\w*[^\n]{0,80}не\s+требуетс|редакт\w*[^\n]{0,80}не\s+требуетс|удал\w*[^\n]{0,80}не\s+требуетс"))
+            req.Features.Remove(AssignmentFeatures.ProductCrud);
+
+        if (Regex.IsMatch(lower, @"поиск[^\n]{0,80}не\s+требуетс|не\s+требуетс[^\n]{0,80}поиск"))
+            req.Features.Remove(AssignmentFeatures.ProductSearch);
+
+        if (Regex.IsMatch(lower, @"сортир\w*[^\n]{0,80}не\s+требуетс|не\s+требуетс[^\n]{0,80}сортир"))
+            req.Features.Remove(AssignmentFeatures.ProductSort);
+
+        if (Regex.IsMatch(lower, @"фильтрац\w*[^\n]{0,80}не\s+требуетс|не\s+требуетс[^\n]{0,80}фильтрац"))
+            req.Features.Remove(AssignmentFeatures.ProductFilters);
     }
 
     private static bool DetectAuthorField(string text, string lower)
